@@ -477,19 +477,13 @@ export function DashboardScreen() {
             <span className="text-gray-700 text-[10px] font-medium text-center">Lista del Grupo</span>
           </button>
           <button 
-            onClick={() => setShowExportModal(true)}
+            onClick={() => navigate('/add-event')}
             className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
           >
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-              <Download className="w-5 h-5 text-red-600" />
-            </div>
-            <span className="text-gray-700 text-[10px] font-medium text-center">Exportar PDF</span>
-          </button>
-          <button className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-gray-50 active:scale-95 transition-all">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Send className="w-5 h-5 text-purple-600" />
+              <Calendar className="w-5 h-5 text-purple-600" />
             </div>
-            <span className="text-gray-700 text-[10px] font-medium text-center">Enviar Notificación</span>
+            <span className="text-gray-700 text-[10px] font-medium text-center">Nuevo Evento</span>
           </button>
         </motion.div>
       </div>
