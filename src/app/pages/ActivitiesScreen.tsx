@@ -8,6 +8,7 @@ import {
   MoreHorizontal, Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { activityService } from '../../services/activityService';
 
 // Tipos de datos mock
 type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
@@ -108,24 +109,36 @@ export function ActivitiesScreen() {
     return <span className="font-bold text-sm text-gray-700">{status}</span>;
   };
 
-  const handleCreateAndCapture = () => {
+  const handleCreateAndCapture = async () => {
     if (!activityName.trim()) return;
 
-    // TODO: Create the activity in the database here
+    try {
+      // Create the activity in the remote database (group_id hardcoded / backend resolves or it requires it)
+      // Since group_id is required we default to 1, usually we'd pass active user's group.
+      const response = await activityService.createActivity({
+        title: activityName.trim(),
+        subject: currentCampo.id,
+        due_date: new Date().toISOString().split('T')[0],
+        group_id: 1 // Default group_id pending auth user's actual group parsing
+      });
 
-    // Navigate to the detail view of the new activity
-    // For now we use a dummy ID 'new'
-    navigate('/activity/new', {
-      state: {
-        activityName: activityName.trim(),
-        campoName: currentCampo.name,
-        campoColor: currentCampo.color,
-        activityType: activityType
-      }
-    });
-    
-    // Close the modal
-    setShowNewModal(false);
+      // Navigate to the manual capture view of the new activity
+      // with its newly created ID
+      navigate('/manual-capture', {
+        state: {
+          activityId: response.id,
+          activityName: activityName.trim(),
+          campoName: currentCampo.name,
+          campoColor: currentCampo.color,
+          activityType: activityType
+        }
+      });
+      
+      setShowNewModal(false);
+    } catch (error) {
+      console.error("Error creating activity", error);
+      alert("Hubo un error al guardar la actividad en la nube.");
+    }
   };
 
   return (

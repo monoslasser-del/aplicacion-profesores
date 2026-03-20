@@ -48,6 +48,11 @@ export const apiClient = {
       const response = await fetch(url, config);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          window.location.href = '/login'; // Force redirect to login
+        }
+        
         // Manejar errores de servidor (4xx, 5xx)
         const errorData = await response.json().catch(() => ({}));
         // Extraer el primer mensaje de error de validación si existe

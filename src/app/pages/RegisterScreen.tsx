@@ -13,11 +13,12 @@ export function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [estado, setEstado] = useState('');
   const [municipio, setMunicipio] = useState('');
+  const [gradoAsignado, setGradoAsignado] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isFormValid = !!(name && email && password && password === confirmPassword && estado && municipio);
+  const isFormValid = !!(name && email && password && password === confirmPassword && estado && municipio && gradoAsignado);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +35,9 @@ export function RegisterScreen() {
         password_confirmation: confirmPassword,
         estado,
         municipio,
+        grado_asignado: gradoAsignado,
       });
-      navigate('/dashboard');
+      navigate('/planes');
     } catch (err: any) {
       setError(err.message ?? 'Ocurrió un error. Intenta de nuevo.');
     } finally {
@@ -196,6 +198,24 @@ export function RegisterScreen() {
                     className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Grado Field */}
+            <div className="space-y-1.5 group">
+              <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Grado o Grupo que Atiende</label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                  <User className="w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                </div>
+                <input 
+                  type="text" 
+                  required 
+                  value={gradoAsignado} 
+                  onChange={e => setGradoAsignado(e.target.value)} 
+                  placeholder="Ej. 3° A, Primaria"
+                  className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-12 pr-4 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none"
+                />
               </div>
             </div>
 

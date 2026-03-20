@@ -46,7 +46,32 @@ const MOCK_STUDENTS: Student[] = [
 export function StudentListScreen() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [studentsList, setStudentsList] = useState<Student[]>(MOCK_STUDENTS);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  React.useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const data = await studentService.getStudents();
+        const mappedData: Student[] = data.map(s => {
+          const parts = s.name.split(' ');
+          const fn = parts[0] || '';
+          const ln = parts.slice(1).join(' ') || '';
+          return {
+            id: s.id?.toString() || '',
+            firstName: fn,
+            lastName: ln,
+            curp: s.curp,
+            status: 'present'
+          };
+        });
+        setStudentsList(mappedData);
+      } catch(e) {
+        console.error('Failed to parse students list from backend', e);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   // Manual Enrollment Modal State
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -70,10 +95,11 @@ export function StudentListScreen() {
         console.log('Linked Tag UID (Manual):', uid);
         
         try {
-          await studentService.addStudent({
+          await studentService.createStudent({
             name: newName.trim(),
-            enrollment_date: new Date().toISOString(),
-            sync_status: 'PENDING'
+            curp: newCurp.trim(),
+            nfc_tag: uid,
+            group_id: newGroup, // Opcional, dependiendo si el usuario capturó el ID real
           });
         } catch (dbError) {
           console.error("Error saving student to DB:", dbError);
@@ -100,13 +126,13 @@ export function StudentListScreen() {
 
   // Sort by last name and filter by search query
   const filteredAndSortedStudents = useMemo(() => {
-    return MOCK_STUDENTS
+    return studentsList
       .filter(student => {
         const fullName = `${student.lastName} ${student.firstName}`.toLowerCase();
         return fullName.includes(searchQuery.toLowerCase());
       })
       .sort((a, b) => a.lastName.localeCompare(b.lastName));
-  }, [searchQuery]);
+  }, [searchQuery, studentsList]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -123,7 +149,7 @@ export function StudentListScreen() {
 
   const handleDownload911 = () => {
     // Adapter to match expected shape
-    const statsInput = MOCK_STUDENTS.map(s => ({
+    const statsInput = studentsList.map(s => ({
       name: `${s.lastName} ${s.firstName}`,
       curp: s.curp,
       isRepetidor: s.isRepetidor

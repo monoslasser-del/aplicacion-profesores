@@ -25,9 +25,7 @@ import {
   Printer
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../storage/db';
-import { studentService } from '../../services/studentService';
+import { studentService, Student } from '../../services/studentService';
 import { pdfGenerator } from '../../lib/pdfGenerator';
 import { hardwareServices } from '../../utils/hardwareServices';
 
@@ -36,11 +34,24 @@ export function DashboardScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Obtener perfil del docente real
-  const userProfiles = useLiveQuery(() => db.userProfile.toArray()) || [];
-  const activeUser = userProfiles.length > 0 ? userProfiles[userProfiles.length - 1] : { name: 'Docente', grade: '3° A', role: 'Educador' };
+  const [recentStudentsDb, setRecentStudentsDb] = useState<Student[]>([]);
   
-  const [group, setGroup] = useState(activeUser.grade || '3° A');
+  // Use a default user for now
+  const activeUser = { name: 'Docente', grade: '3° A', role: 'Educador' };
+  
+  const [group, setGroup] = useState(activeUser.grade);
+
+  React.useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const studentsData = await studentService.getStudents();
+        setRecentStudentsDb(studentsData);
+      } catch (e) {
+        console.error("Dashboard fetch error", e);
+      }
+    };
+    loadDashboardData();
+  }, []);
 
   const handleNfcScan = async () => {
     try {
@@ -91,14 +102,11 @@ export function DashboardScreen() {
     setShowExportModal(false);
   };
 
-  // Obtener lista real de estudiantes desde la base de datos local usando Dexie hook
-  const recentStudentsDb = useLiveQuery(() => studentService.getAllStudents()) || [];
-  
-  // Mapear los datos de la DB al formato esperado por la UI (simulando estado de asistencia por ahora)
+  // Mapear los datos de la DB al formato esperado por la UI
   const recentStudents = recentStudentsDb.map((student, index) => ({
-    id: student.id.toString(),
+    id: student.id?.toString() || '',
     name: student.name,
-    studentId: student.curp || '12845678', // Un ID de ejemplo si no hay CURP
+    studentId: student.curp, 
     time: index % 2 === 0 ? '09:10 AM' : '',
     present: index % 2 === 0
   }));
@@ -536,7 +544,10 @@ export function DashboardScreen() {
               </button>
 
               <button 
-                onClick={() => handleExport('Trimestral')}
+                onClick={() => {
+                  const token = localStorage.getItem('auth_token');
+                  window.open(`https://tech.ecteam.mx/api/v1/reports/generate?type=trimestral&token=${token}`, '_system');
+                }}
                 className="w-full flex items-center justify-between p-4 border-2 border-red-100 bg-red-50 rounded-xl active:scale-95 transition-transform"
               >
                 <div className="text-left">
