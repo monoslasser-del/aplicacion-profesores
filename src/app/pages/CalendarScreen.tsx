@@ -1,18 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Info, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { calendarService, type CalendarEvent as ApiCalendarEvent } from '../../services/calendarService';
 
 // Definición aproximada del Calendario SEP 2025-2026
 // Basado en la estructura estándar de 190 días efectivos de clase.
 // Los meses abarcan desde Agosto 2025 hasta Julio 2026.
 
-type EventType = 'inicio_fin' | 'cte' | 'descarga' | 'festivo' | 'vacaciones' | 'registro' | 'taller';
+type EventType = 'inicio_fin' | 'cte' | 'descarga' | 'festivo' | 'vacaciones' | 'registro' | 'taller' | 'custom';
 
 interface CalendarEvent {
+  id?: number;
   date: string; // YYYY-MM-DD
   title: string;
-  type: EventType;
+  type: EventType | string;
+  bg_color?: string;
+  text_color?: string;
+  dot_color?: string;
 }
 
 const SEP_EVENTS: CalendarEvent[] = [
@@ -110,7 +115,21 @@ const EVENT_STYLES: Record<EventType, { bg: string, text: string, dot: string, l
   festivo: { bg: 'bg-orange-100', text: 'text-orange-800', dot: 'bg-orange-500', label: 'Suspensión Labores' },
   vacaciones: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-500', label: 'Vacaciones' },
   registro: { bg: 'bg-purple-100', text: 'text-purple-800', dot: 'bg-purple-500', label: 'Periodo Evaluacion' },
-  taller: { bg: 'bg-pink-100', text: 'text-pink-800', dot: 'bg-pink-500', label: 'Taller Intensivo' }
+  taller: { bg: 'bg-pink-100', text: 'text-pink-800', dot: 'bg-pink-500', label: 'Taller Intensivo' },
+  custom: { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-500', label: 'Evento Personalizado' }
+};
+
+const getEventStyle = (event: CalendarEvent) => {
+  if (event.type === 'custom' && event.bg_color) {
+    return {
+      bg: event.bg_color,
+      text: event.text_color || 'text-white',
+      dot: event.dot_color || 'bg-white',
+      label: event.type
+    };
+  }
+  const type = (event.type as EventType) in EVENT_STYLES ? (event.type as EventType) : 'custom';
+  return EVENT_STYLES[type];
 };
 
 const MONTHS = [
@@ -134,6 +153,19 @@ export const CalendarScreen = () => {
   const navigate = useNavigate();
   const [currentMonthIdx, setCurrentMonthIdx] = useState(0);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [apiEvents, setApiEvents] = useState<ApiCalendarEvent[]>([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const data = await calendarService.getEvents();
+        setApiEvents(data);
+      } catch (error) {
+        console.error('Failed to load events', error);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const prevMonth = () => setCurrentMonthIdx(Math.max(0, currentMonthIdx - 1));
   const nextMonth = () => setCurrentMonthIdx(Math.min(MONTHS.length - 1, currentMonthIdx + 1));
@@ -147,6 +179,8 @@ export const CalendarScreen = () => {
 
   const getEventForDay = (day: number) => {
     const dateStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+    const apiEvent = apiEvents.find(e => e.date === dateStr);
+    if (apiEvent) return apiEvent;
     return SEP_EVENTS.find(e => e.date === dateStr);
   };
 
@@ -182,13 +216,13 @@ export const CalendarScreen = () => {
       <div className="flex-1 px-4 -mt-16 pb-14 overflow-y-auto z-20">
         {/* Banner de Próximo Evento */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5 mb-6 flex items-start gap-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${EVENT_STYLES[upcomingEvent.type].bg}`}>
-            <CalendarIcon className={`w-6 h-6 ${EVENT_STYLES[upcomingEvent.type].text}`} />
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${getEventStyle(upcomingEvent).bg}`}>
+            <CalendarIcon className={`w-6 h-6 ${getEventStyle(upcomingEvent).text}`} />
           </div>
           <div className="flex-1">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Siguiente Evento Escolar</span>
             <h3 className="text-gray-900 font-bold leading-tight">{upcomingEvent.title}</h3>
-            <p className={`text-sm mt-1 font-semibold ${EVENT_STYLES[upcomingEvent.type].text}`}>{upcomingEvent.date}</p>
+            <p className={`text-sm mt-1 font-semibold ${getEventStyle(upcomingEvent).text}`}>{upcomingEvent.date}</p>
           </div>
         </div>
 
@@ -228,15 +262,15 @@ export const CalendarScreen = () => {
                   disabled={!event}
                   className={`
                     relative aspect-square flex flex-col items-center justify-center rounded-xl transition-all
-                    ${event ? EVENT_STYLES[event.type].bg + ' shadow-sm active:scale-95' : (isWeekend ? 'bg-gray-50/50' : 'bg-white hover:bg-gray-50')}
+                    ${event ? getEventStyle(event).bg + ' shadow-sm active:scale-95' : (isWeekend ? 'bg-gray-50/50' : 'bg-white hover:bg-gray-50')}
                     ${isToday ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
                   `}
                 >
-                  <span className={`text-sm font-bold ${event ? EVENT_STYLES[event.type].text : (isWeekend ? 'text-gray-400' : 'text-gray-700')}`}>
+                  <span className={`text-sm font-bold ${event ? getEventStyle(event).text : (isWeekend ? 'text-gray-400' : 'text-gray-700')}`}>
                     {day}
                   </span>
                   {event && (
-                    <span className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full ${EVENT_STYLES[event.type].dot}`}></span>
+                    <span className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full ${getEventStyle(event).dot}`}></span>
                   )}
                 </button>
               );
@@ -271,13 +305,13 @@ export const CalendarScreen = () => {
             />
             <motion.div 
               initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl ${EVENT_STYLES[selectedEvent.type].bg} border border-white/40`}
+              className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl ${getEventStyle(selectedEvent).bg} border border-white/40`}
             >
                <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center bg-white shadow-sm`}>
-                 <CalendarIcon className={`w-6 h-6 ${EVENT_STYLES[selectedEvent.type].text}`} />
+                 <CalendarIcon className={`w-6 h-6 ${getEventStyle(selectedEvent).text}`} />
                </div>
-               <h3 className={`text-xl font-black mb-1 ${EVENT_STYLES[selectedEvent.type].text}`}>{selectedEvent.title}</h3>
-               <p className={`text-sm font-medium ${EVENT_STYLES[selectedEvent.type].text} opacity-80 mb-6`}>{selectedEvent.date}</p>
+               <h3 className={`text-xl font-black mb-1 ${getEventStyle(selectedEvent).text}`}>{selectedEvent.title}</h3>
+               <p className={`text-sm font-medium ${getEventStyle(selectedEvent).text} opacity-80 mb-6`}>{selectedEvent.date}</p>
                
                <button 
                 onClick={() => setSelectedEvent(null)}
