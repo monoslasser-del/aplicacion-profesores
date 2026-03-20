@@ -16,6 +16,7 @@ import { ImportStudentsScreen } from "./pages/ImportStudentsScreen";
 import { ActivityDetailScreen } from "./pages/ActivityDetailScreen";
 import { CalendarScreen } from "./pages/CalendarScreen";
 import { AddCalendarEventScreen } from "./pages/AddCalendarEventScreen";
+import { PricingScreen } from "./pages/PricingScreen";
 
 export const router = createHashRouter([
   {
@@ -26,6 +27,7 @@ export const router = createHashRouter([
       { path: "welcome", element: <WelcomeScreen /> },
       { path: "login", element: <LoginScreen /> },
       { path: "register", element: <RegisterScreen /> },
+      { path: "planes", element: <PricingScreen /> },
       { path: "capture", element: <ContinuousNfcScreen /> },
       { path: "manual-capture", element: <ManualCaptureScreen /> },
       { path: "evaluation-capture", element: <EvaluationCaptureScreen /> },
