@@ -10,6 +10,7 @@ import { ContinuousNfcScreen } from "./pages/ContinuousNfcScreen";
 import { ManualCaptureScreen } from "./pages/ManualCaptureScreen";
 import { EvaluationCaptureScreen } from "./pages/EvaluationCaptureScreen";
 import { WelcomeScreen } from "./pages/WelcomeScreen";
+import { SplashScreen } from "./pages/SplashScreen";
 import { LoginScreen } from "./pages/LoginScreen";
 import { RegisterScreen } from "./pages/RegisterScreen";
 import { ImportStudentsScreen } from "./pages/ImportStudentsScreen";
@@ -17,13 +18,14 @@ import { ActivityDetailScreen } from "./pages/ActivityDetailScreen";
 import { CalendarScreen } from "./pages/CalendarScreen";
 import { ProjectsScreen } from "./pages/ProjectsScreen";
 import { ExamBuilderScreen } from "./pages/ExamBuilderScreen";
+import { PricingScreen } from "./pages/PricingScreen";
 
 export const router = createHashRouter([
   {
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <WelcomeScreen /> },
+      { index: true, element: <SplashScreen /> },
       { path: "welcome", element: <WelcomeScreen /> },
       { path: "login", element: <LoginScreen /> },
       { path: "register", element: <RegisterScreen /> },
