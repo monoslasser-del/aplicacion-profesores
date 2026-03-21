@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, Check } from 'lucide-react';
+import { Mail, Lock, Check, BookOpen, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { googleAuthService } from '../../services/googleAuthService';
 
 export function LoginScreen() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('director@escuela.com');
-  const [password, setPassword] = useState('admin');
+  const [email, setEmail] = useState('admin@appmaestri.com');
+  const [password, setPassword] = useState('password123');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -40,33 +41,38 @@ export function LoginScreen() {
   return (
     <div className="flex min-h-screen bg-white">
       {/* Decorative Side Panel for Large Screens */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="absolute -top-[20%] -right-[10%] w-[70%] h-[70%] bg-blue-500 rounded-full blur-[120px] opacity-20 mix-blend-screen"></div>
-        <div className="absolute top-[60%] -left-[10%] w-[50%] h-[50%] bg-indigo-500 rounded-full blur-[100px] opacity-20 mix-blend-screen"></div>
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-emerald-950 via-teal-900 to-cyan-950 p-12 flex-col justify-between relative overflow-hidden">
+        {/* Chalkboard Texture */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-felt.png')] opacity-60 mix-blend-multiply"></div>
+        {/* Data Glows */}
+        <div className="absolute -bottom-[20%] -right-[10%] w-[80%] h-[80%] bg-cyan-500 rounded-full blur-[140px] opacity-30 mix-blend-screen pointer-events-none"></div>
+        <div className="absolute top-[20%] right-[0%] w-[50%] h-[50%] bg-blue-500 rounded-full blur-[100px] opacity-20 mix-blend-screen pointer-events-none"></div>
         
         <div className="relative z-10">
           <div className="flex items-center gap-3 text-white mb-16">
-            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/10">
-              <BookOpen className="w-8 h-8 text-white" />
+            <div className="bg-white/10 p-2.5 rounded-xl backdrop-blur-md border border-white/20 shadow-lg">
+              <Sparkles className="w-8 h-8 text-cyan-300" />
             </div>
-            <span className="text-2xl font-black tracking-wide">EduPro</span>
+            <span className="text-3xl font-black tracking-wide text-white drop-shadow-sm">
+               TIZA <span className="text-cyan-400 font-bold">&</span> DATOS
+            </span>
           </div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
-            <h2 className="text-5xl font-black text-white leading-tight mb-6">
-              Transformando la<br/>Gestión Escolar.
+            <h2 className="text-4xl xl:text-5xl font-black text-white leading-tight mb-6 drop-shadow-md">
+              Pedagogía Tradicional,<br/>
+              <span className="text-cyan-300">Inteligencia del Futuro.</span>
             </h2>
-            <p className="text-blue-100/80 text-lg w-4/5 font-medium leading-relaxed">
-              Descubre una plataforma diseñada específicamente para simplificar el día a día de los profesores y mejorar la educación.
+            <p className="text-teal-100/90 text-lg w-4/5 font-medium leading-relaxed drop-shadow-sm">
+              La evolución de la tiza al dato. Genera exámenes con IA NEM, lectura de hojas de respuestas OMR por cámara y califica al instante.
             </p>
           </motion.div>
         </div>
 
-        <div className="relative z-10 flex items-center gap-4 text-blue-200 text-sm font-medium">
-          <span>© 2026 EduPro</span>
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></div>
+        <div className="relative z-10 flex items-center gap-4 text-emerald-200/80 text-sm font-medium">
+          <span>© 2026 Tiza & Datos</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50"></div>
           <span>Privacidad</span>
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></div>
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50"></div>
           <span>Términos</span>
         </div>
       </div>
@@ -77,11 +83,11 @@ export function LoginScreen() {
         
         <div className="w-full max-w-[440px]">
           {/* Mobile Logo */}
-          <div className="flex lg:hidden items-center gap-3 text-blue-900 mb-12 justify-center">
-            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-600/20">
-              <BookOpen className="w-7 h-7 text-white" />
+          <div className="flex lg:hidden items-center gap-3 text-slate-800 mb-12 justify-center">
+            <div className="bg-emerald-600 p-2.5 rounded-xl shadow-lg shadow-emerald-600/20">
+              <Sparkles className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-black tracking-wide">EduPro</span>
+            <span className="text-2xl font-black tracking-wide uppercase text-slate-800">Tiza <span className="text-emerald-500">&</span> Datos</span>
           </div>
 
           <motion.div 
@@ -169,7 +175,7 @@ export function LoginScreen() {
               type="submit"
               className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-2 group ${
                 (!isLoading && email && password) 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.4)] hover:shadow-[0_12px_24px_-6px_rgba(37,99,235,0.5)]' 
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_8px_20px_-6px_rgba(16,185,129,0.4)] hover:shadow-[0_12px_24px_-6px_rgba(16,185,129,0.5)]' 
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
               }`}
             >

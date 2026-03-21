@@ -35,8 +35,8 @@ export function DashboardScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const [recentStudentsDb, setRecentStudentsDb] = useState<Student[]>([]);
-  
+
+  const activeUser = { name: 'Docente', grade: '3° A', role: 'Educador' };
   const [group, setGroup] = useState(activeUser.grade || '3° A');
   const [groups, setGroups] = useState<Group[]>([]);
 
@@ -83,41 +83,57 @@ export function DashboardScreen() {
       period: period,
       dateStart: start.toLocaleDateString(),
       dateEnd: end.toLocaleDateString(),
-      students: recentStudentsDb // Usamos la data real de la base de datos
+      students: recentStudentsDb as any // Usamos la data real de la base de datos
     });
     
     setShowExportModal(false);
   };
 
   // Obtener lista real de estudiantes y actividades
-  const recentStudentsDb = useLiveQuery(() => studentService.getAllStudents()) || [];
-  const activitiesDb = useLiveQuery(() => db.activities.toArray()) || [];
+  const [recentStudentsDb, setRecentStudentsDb] = useState<Student[]>([]);
+  const [activitiesDb, setActivitiesDb] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const studentsData = await studentService.getStudents();
+        setRecentStudentsDb(studentsData);
+      } catch (e) {
+        console.error("Dashboard fetch error", e);
+      }
+    };
+    loadDashboardData();
+  }, []);
   
   const totalStudents = recentStudentsDb.length;
 
   // Buscar la actividad más reciente
   const lastActivity = activitiesDb.length > 0 
-    ? activitiesDb.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] 
+    ? activitiesDb.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] 
     : null;
 
   // Mapear lista contra la actividad más reciente para mostrar asistencia/entregas reales
   const recentStudents = recentStudentsDb.map((student) => {
     // Verificar si en la última actividad el alumno está presente/status success
-    const record = lastActivity?.records.find(r => r.studentId === student.id && r.status === 'success');
+    const record = lastActivity?.records.find((r: any) => r.studentId === student.id && r.status === 'success');
+    
+    // workaround cast
+    const s = student as any;
+
     return {
-      id: student.id.toString(),
+      id: student.id ? student.id.toString() : '',
       name: student.name,
-      studentId: student.nl ? `NL: ${student.nl}` : (student.curp ? `CURP: ${student.curp.substring(0,6)}...` : '-'),
+      studentId: s.nl ? `NL: ${s.nl}` : (student.curp ? `CURP: ${student.curp.substring(0,6)}...` : '-'),
       time: record ? record.time : '',
       present: !!record
     };
   });
 
   const attendanceStats = {
-    present: lastActivity ? lastActivity.records.filter(r => r.status === 'success').length : 0,
+    present: lastActivity ? lastActivity.records.filter((r: any) => r.status === 'success').length : 0,
     total: totalStudents > 0 ? totalStudents : 0,
     percentage: totalStudents > 0 && lastActivity 
-      ? (lastActivity.records.filter(r => r.status === 'success').length / totalStudents) * 100 
+      ? (lastActivity.records.filter((r: any) => r.status === 'success').length / totalStudents) * 100 
       : 0
   };
 
@@ -125,7 +141,7 @@ export function DashboardScreen() {
   let totalScore = 0;
   let countScore = 0;
   activitiesDb.forEach(act => {
-    act.records.forEach(r => {
+    act.records.forEach((r: any) => {
       if (r.score !== undefined && r.score !== null) {
         totalScore += r.score;
         countScore++;

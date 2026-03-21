@@ -1,33 +1,78 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, User, GraduationCap } from 'lucide-react';
+import { Mail, Lock, User, GraduationCap, BookOpen, MapPin, AlertCircle, ArrowRight } from 'lucide-react';
 import { authService } from '../../services/authService';
+import { googleAuthService } from '../../services/googleAuthService';
+
+const MEXICO_DATA: Record<string, string[]> = {
+  "Aguascalientes": ["Aguascalientes", "Jesús María", "Calvillo", "Otro..."],
+  "Baja California": ["Tijuana", "Mexicali", "Ensenada", "Otro..."],
+  "Baja California Sur": ["La Paz", "Los Cabos", "Otro..."],
+  "Campeche": ["Campeche", "Ciudad del Carmen", "Otro..."],
+  "Chiapas": ["Tuxtla Gutiérrez", "Tapachula", "San Cristóbal", "Otro..."],
+  "Chihuahua": ["Chihuahua", "Ciudad Juárez", "Cuauhtémoc", "Otro..."],
+  "Ciudad de México": ["Álvaro Obregón", "Cuauhtémoc", "Iztapalapa", "Miguel Hidalgo", "Tlalpan", "Otro..."],
+  "Coahuila": ["Saltillo", "Torreón", "Monclova", "Otro..."],
+  "Colima": ["Colima", "Manzanillo", "Otro..."],
+  "Durango": ["Durango", "Gómez Palacio", "Otro..."],
+  "Estado de México": ["Toluca", "Ecatepec", "Naucalpan", "Tlalnepantla", "Otro..."],
+  "Guanajuato": ["León", "Irapuato", "Celaya", "Guanajuato", "Otro..."],
+  "Guerrero": ["Acapulco", "Chilpancingo", "Iguala", "Otro..."],
+  "Hidalgo": ["Pachuca", "Tulancingo", "Tizayuca", "Otro..."],
+  "Jalisco": ["Guadalajara", "Zapopan", "Tlaquepaque", "Tonalá", "Tlajomulco", "Otro..."],
+  "Michoacán": ["Morelia", "Uruapan", "Zamora", "Otro..."],
+  "Morelos": ["Cuernavaca", "Jiutepec", "Cuautla", "Otro..."],
+  "Nayarit": ["Tepic", "Bahía de Banderas", "Otro..."],
+  "Nuevo León": ["Monterrey", "San Pedro", "Apodaca", "Guadalupe", "Otro..."],
+  "Oaxaca": ["Oaxaca de Juárez", "Tuxtepec", "Salina Cruz", "Otro..."],
+  "Puebla": ["Puebla", "Tehuacán", "Cholula", "Otro..."],
+  "Querétaro": ["Querétaro", "San Juan del Río", "Corregidora", "Otro..."],
+  "Quintana Roo": ["Cancún", "Playa del Carmen", "Chetumal", "Otro..."],
+  "San Luis Potosí": ["San Luis Potosí", "Ciudad Valles", "Otro..."],
+  "Sinaloa": ["Culiacán", "Mazatlán", "Ahome", "Otro..."],
+  "Sonora": ["Hermosillo", "Cajeme", "Nogales", "Otro..."],
+  "Tabasco": ["Villahermosa", "Cárdenas", "Comalcalco", "Otro..."],
+  "Tamaulipas": ["Reynosa", "Matamoros", "Nuevo Laredo", "Tampico", "Otro..."],
+  "Tlaxcala": ["Tlaxcala", "Apizaco", "Huamantla", "Otro..."],
+  "Veracruz": ["Veracruz", "Xalapa", "Coatzacoalcos", "Córdoba", "Otro..."],
+  "Yucatán": ["Mérida", "Kanasín", "Valladolid", "Otro..."],
+  "Zacatecas": ["Zacatecas", "Fresnillo", "Guadalupe", "Otro..."]
+};
 
 export function RegisterScreen() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [grade, setGrade] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Location
   const [estado, setEstado] = useState('');
   const [municipio, setMunicipio] = useState('');
-  const [gradoAsignado, setGradoAsignado] = useState('');
+  const [customMunicipio, setCustomMunicipio] = useState('');
+
+  // Education Level
+  const [nivel, setNivel] = useState('');
+  const [grado, setGrado] = useState('');
+  const [grupo, setGrupo] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !grade || !password || password !== confirmPassword) return;
+    const finalMunicipio = municipio === 'Otro...' ? customMunicipio : municipio;
+    const isValid = !!(name && email && estado && finalMunicipio && nivel && grado && grupo && password);
+    if (!isValid || password !== confirmPassword) return;
     
     setIsLoading(true);
     try {
       await authService.register({
         name,
         email,
-        grade,
+        grade: `${grado} ${grupo} ${nivel}`, // Send formatted string to backend as grade
         password
       });
 
@@ -47,6 +92,8 @@ export function RegisterScreen() {
       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
     </svg>
   );
+
+  const isFormValid = !!(name && email && estado && (municipio === 'Otro...' ? customMunicipio : municipio) && nivel && grado && grupo && password);
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -79,137 +126,7 @@ export function RegisterScreen() {
 
       {/* Register Form */}
       <div className="flex-1 px-6 pt-6 pb-8 flex flex-col z-0">
-        <motion.form 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          onSubmit={handleRegister}
-          className="flex flex-col gap-4 flex-1"
-        >
-          {/* Name Field */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Nombre Completo</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <User className="w-5 h-5 text-slate-400" />
-              </div>
-              <input 
-                type="text" 
-                required 
-                value={name} 
-                onChange={e => setName(e.target.value)} 
-                placeholder="Ej. María López"
-                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm"
-              />
-            </div>
-          </div>
 
-          {/* Email Field */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Correo Electrónico</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <Mail className="w-5 h-5 text-slate-400" />
-              </div>
-              <input 
-                type="email" 
-                required 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                placeholder="correo@ejemplo.com"
-                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm"
-              />
-            </div>
-          </div>
-
-          {/* Grade/Group Field */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Grado y Grupo</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <GraduationCap className="w-5 h-5 text-slate-400" />
-              </div>
-              <input 
-                type="text" 
-                required 
-                value={grade} 
-                onChange={e => setGrade(e.target.value)} 
-                placeholder="Ej. 3° A, 1° B"
-                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm uppercase uppercase-placeholder"
-              />
-            </div>
-          </div>
-
-          {/* Password Field */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Contraseña</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <Lock className="w-5 h-5 text-slate-400" />
-              </div>
-              <input 
-                type="password" 
-                required 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                placeholder="••••••••"
-                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-black text-slate-900 tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm placeholder:tracking-normal placeholder:font-medium"
-              />
-            </div>
-          </div>
-
-          {/* Confirm Password Field */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Confirmar Contraseña</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <Lock className="w-5 h-5 text-slate-400" />
-              </div>
-              <input 
-                type="password" 
-                required 
-                value={confirmPassword} 
-                onChange={e => setConfirmPassword(e.target.value)} 
-                placeholder="••••••••"
-                className={`w-full bg-white border-2 ${confirmPassword && password !== confirmPassword ? 'border-red-400' : 'border-slate-200/60'} rounded-2xl pl-12 pr-4 py-3.5 font-black text-slate-900 tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm placeholder:tracking-normal placeholder:font-medium`}
-              />
-            </div>
-            {confirmPassword && password !== confirmPassword && (
-              <p className="text-red-500 text-xs font-bold pl-1 pt-1">Las contraseñas no coinciden.</p>
-            )}
-          </div>
-
-          {/* Submit Button */}
-          <motion.button 
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            disabled={isLoading || !name || !email || !grade || !password || password !== confirmPassword}
-            type="submit"
-            className={`w-full py-4 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center mt-2 ${
-              (!isLoading && name && email && grade && password && password === confirmPassword) ? 'bg-blue-600 text-white shadow-blue-600/30' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div> : <span>Crear cuenta</span>}
-          </motion.button>
-          
-          <div className="relative flex items-center py-2">
-             <div className="flex-grow border-t border-slate-200"></div>
-             <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase">o</span>
-             <div className="flex-grow border-t border-slate-200"></div>
-          </div>
-
-          {/* Google Button */}
-          <motion.button 
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            type="button"
-            className="w-full bg-white border-2 border-slate-200 text-slate-700 font-bold text-base py-3.5 rounded-2xl shadow-sm transition-all hover:bg-slate-50 flex items-center justify-center gap-3"
-          >
-            <GoogleIcon />
-            <span>Registrarse con Google</span>
-          </motion.button>
-
-        </motion.form>
         
         <div className="w-full max-w-[500px] my-auto">
           {/* Mobile Logo */}
@@ -296,14 +213,17 @@ export function RegisterScreen() {
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                     <MapPin className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                   </div>
-                  <input 
-                    type="text" 
+                  <select 
                     required 
                     value={estado} 
-                    onChange={e => setEstado(e.target.value)} 
-                    placeholder="Ej. Jalisco"
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none"
-                  />
+                    onChange={e => { setEstado(e.target.value); setMunicipio(''); }} 
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>Selecciona estado...</option>
+                    {Object.keys(MEXICO_DATA).map(est => (
+                       <option key={est} value={est}>{est}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -313,33 +233,75 @@ export function RegisterScreen() {
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
                     <MapPin className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                   </div>
-                  <input 
-                    type="text" 
+                  <select 
                     required 
+                    disabled={!estado}
                     value={municipio} 
                     onChange={e => setMunicipio(e.target.value)} 
-                    placeholder="Ej. Zapopan"
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none"
-                  />
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none appearance-none disabled:opacity-50 cursor-pointer"
+                  >
+                    <option value="" disabled>Selecciona municipio...</option>
+                    {estado && MEXICO_DATA[estado]?.map(mun => (
+                       <option key={mun} value={mun}>{mun}</option>
+                    ))}
+                  </select>
                 </div>
+                {municipio === 'Otro...' && (
+                  <input
+                     type="text"
+                     value={customMunicipio}
+                     onChange={(e) => setCustomMunicipio(e.target.value)}
+                     placeholder="Escribe tu municipio..."
+                     className="w-full mt-2 bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl px-3 py-2 font-semibold text-[14px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none"
+                  />
+                )}
               </div>
             </div>
 
-            {/* Grado Field */}
-            <div className="space-y-1.5 group">
-              <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Grado o Grupo que Atiende</label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                  <User className="w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                </div>
-                <input 
-                  type="text" 
+            {/* Nivel & Grado Row */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Nivel</label>
+                <select 
                   required 
-                  value={gradoAsignado} 
-                  onChange={e => setGradoAsignado(e.target.value)} 
-                  placeholder="Ej. 3° A, Primaria"
-                  className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-12 pr-4 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none"
-                />
+                  value={nivel} 
+                  onChange={e => { setNivel(e.target.value); setGrado(''); }} 
+                  className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl px-3 py-3 font-semibold text-[14px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Nivel...</option>
+                  <option value="Preescolar">Preescolar</option>
+                  <option value="Primaria">Primaria</option>
+                  <option value="Secundaria">Secundaria</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Grado</label>
+                <select 
+                  required 
+                  disabled={!nivel}
+                  value={grado} 
+                  onChange={e => setGrado(e.target.value)} 
+                  className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl px-3 py-3 font-semibold text-[14px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none appearance-none disabled:opacity-50 cursor-pointer"
+                >
+                  <option value="" disabled>Grado...</option>
+                  {nivel === 'Preescolar' && ['1º', '2º', '3º'].map(g => <option key={g} value={g}>{g}</option>)}
+                  {nivel === 'Primaria' && ['1º', '2º', '3º', '4º', '5º', '6º'].map(g => <option key={g} value={g}>{g}</option>)}
+                  {nivel === 'Secundaria' && ['1º', '2º', '3º'].map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Grupo</label>
+                <select 
+                  required 
+                  value={grupo} 
+                  onChange={e => setGrupo(e.target.value)} 
+                  className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl px-3 py-3 font-semibold text-[14px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Grupo...</option>
+                  {['A', 'B', 'C', 'D', 'E', 'F'].map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
               </div>
             </div>
 
