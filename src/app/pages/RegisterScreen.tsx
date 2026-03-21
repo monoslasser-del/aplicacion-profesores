@@ -1,26 +1,37 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User, GraduationCap } from 'lucide-react';
+import { authService } from '../../services/authService';
 
 export function RegisterScreen() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [grade, setGrade] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password || password !== confirmPassword) return;
+    if (!name || !email || !grade || !password || password !== confirmPassword) return;
     
     setIsLoading(true);
-    // Simulate auth delay
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authService.register({
+        name,
+        email,
+        grade,
+        password
+      });
+
       navigate('/dashboard');
-    }, 1000);
+    } catch (error) {
+      alert("Error al intentar registrar la cuenta");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const GoogleIcon = () => (
@@ -93,6 +104,24 @@ export function RegisterScreen() {
             </div>
           </div>
 
+          {/* Grade/Group Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Grado y Grupo</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <GraduationCap className="w-5 h-5 text-slate-400" />
+              </div>
+              <input 
+                type="text" 
+                required 
+                value={grade} 
+                onChange={e => setGrade(e.target.value)} 
+                placeholder="Ej. 3° A, 1° B"
+                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm uppercase uppercase-placeholder"
+              />
+            </div>
+          </div>
+
           {/* Password Field */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Contraseña</label>
@@ -136,10 +165,10 @@ export function RegisterScreen() {
           <motion.button 
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            disabled={isLoading || !name || !email || !password || password !== confirmPassword}
+            disabled={isLoading || !name || !email || !grade || !password || password !== confirmPassword}
             type="submit"
             className={`w-full py-4 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center mt-2 ${
-              (!isLoading && name && email && password && password === confirmPassword) ? 'bg-blue-600 text-white shadow-blue-600/30' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              (!isLoading && name && email && grade && password && password === confirmPassword) ? 'bg-blue-600 text-white shadow-blue-600/30' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
             {isLoading ? <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div> : <span>Crear cuenta</span>}

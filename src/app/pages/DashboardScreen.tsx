@@ -30,6 +30,7 @@ import { db } from '../../storage/db';
 import { studentService } from '../../services/studentService';
 import { pdfGenerator } from '../../lib/pdfGenerator';
 import { hardwareServices } from '../../utils/hardwareServices';
+import { groupService, type Group } from '../../services/groupService';
 
 export function DashboardScreen() {
   const navigate = useNavigate();
@@ -41,33 +42,34 @@ export function DashboardScreen() {
   const activeUser = userProfiles.length > 0 ? userProfiles[userProfiles.length - 1] : { name: 'Docente', grade: '3° A', role: 'Educador' };
   
   const [group, setGroup] = useState(activeUser.grade || '3° A');
+  const [groups, setGroups] = useState<Group[]>([]);
+
+  React.useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const gs = await groupService.getAllGroups();
+        setGroups(gs);
+      } catch (e) {
+        console.error("Error loading groups in dashboard:", e);
+      }
+    };
+    loadGroups();
+  }, []);
 
   const handleNfcScan = async () => {
     try {
-      // Usamos el servicio de base que creamos antes para inicializar el escaneo
-      await hardwareServices.initNfcListener(
-        async (tagData) => {
-          // Éxito en lectura: Vibrar, registrar log interno y notificar al profe
-          await hardwareServices.vibrateSuccess();
-          const uid = tagData.id ? Array.from(tagData.id).map((i: any) => i.toString(16).padStart(2, '0')).join(':') : 'unknown-uid';
-          
-          await hardwareServices.saveLocalLog(`NFC Attendance Scan: ${uid}`);
-          
-          alert(`¡Asistencia tomada!\n\nUID de Tarjeta: ${uid}`);
-        },
-        async (error) => {
-          // Error en lectura: Vibración distinta de fallo
-          await hardwareServices.vibrateError();
-          await hardwareServices.saveLocalLog(`NFC Error: ${JSON.stringify(error)}`);
-          alert("Error leyendo tarjeta: " + JSON.stringify(error));
-        }
-      );
+      alert("Por favor, acerca una tarjeta NFC al teléfono para escaneo libre.");
+      const tagData = await hardwareServices.initNfcListener();
       
-      alert("Por favor, acerca la tarjeta NFC del alumno al teléfono.");
+      await hardwareServices.vibrateSuccess();
+      const uid = tagData.id ? (Array.isArray(tagData.id) ? tagData.id.join('-') : String(tagData.id)) : 'unknown-uid';
+      await hardwareServices.saveLocalLog(`NFC Quick Scan: ${uid}`);
+      
+      alert(`¡Tarjeta detectada!\nUID de Tarjeta: ${uid}`);
     } catch (error) {
       await hardwareServices.vibrateError();
       await hardwareServices.saveLocalLog(`NFC Init Error: ${JSON.stringify(error)}`);
-      alert("Error iniciando la antena NFC de tu dispositivo.");
+      alert("Error al leer la tarjeta NFC.");
     }
   };
 
@@ -91,34 +93,59 @@ export function DashboardScreen() {
     setShowExportModal(false);
   };
 
-  // Obtener lista real de estudiantes desde la base de datos local usando Dexie hook
+  // Obtener lista real de estudiantes y actividades
   const recentStudentsDb = useLiveQuery(() => studentService.getAllStudents()) || [];
+  const activitiesDb = useLiveQuery(() => db.activities.toArray()) || [];
   
-  // Mapear los datos de la DB al formato esperado por la UI (simulando estado de asistencia por ahora)
-  const recentStudents = recentStudentsDb.map((student, index) => ({
-    id: student.id.toString(),
-    name: student.name,
-    studentId: student.curp || '12845678', // Un ID de ejemplo si no hay CURP
-    time: index % 2 === 0 ? '09:10 AM' : '',
-    present: index % 2 === 0
-  }));
-
-  // Update stats dynamically based on DB size
   const totalStudents = recentStudentsDb.length;
+
+  // Buscar la actividad más reciente
+  const lastActivity = activitiesDb.length > 0 
+    ? activitiesDb.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] 
+    : null;
+
+  // Mapear lista contra la actividad más reciente para mostrar asistencia/entregas reales
+  const recentStudents = recentStudentsDb.map((student) => {
+    // Verificar si en la última actividad el alumno está presente/status success
+    const record = lastActivity?.records.find(r => r.studentId === student.id && r.status === 'success');
+    return {
+      id: student.id.toString(),
+      name: student.name,
+      studentId: student.nl ? `NL: ${student.nl}` : (student.curp ? `CURP: ${student.curp.substring(0,6)}...` : '-'),
+      time: record ? record.time : '',
+      present: !!record
+    };
+  });
+
   const attendanceStats = {
-    present: recentStudents.filter(s => s.present).length,
-    total: totalStudents > 0 ? totalStudents : 30, // Fallback si está vacío
-    percentage: totalStudents > 0 ? (recentStudents.filter(s => s.present).length / totalStudents) * 100 : 40
+    present: lastActivity ? lastActivity.records.filter(r => r.status === 'success').length : 0,
+    total: totalStudents > 0 ? totalStudents : 0,
+    percentage: totalStudents > 0 && lastActivity 
+      ? (lastActivity.records.filter(r => r.status === 'success').length / totalStudents) * 100 
+      : 0
   };
 
+  // Calcular promedios reales en base a records con 'score'
+  let totalScore = 0;
+  let countScore = 0;
+  activitiesDb.forEach(act => {
+    act.records.forEach(r => {
+      if (r.score !== undefined && r.score !== null) {
+        totalScore += r.score;
+        countScore++;
+      }
+    });
+  });
+
+  const globalAverage = countScore > 0 ? (totalScore / countScore).toFixed(1) : '-';
+
   const gradeStats = {
-    average: 8.7,
+    average: globalAverage,
     trimester: 2,
+    // Podría ser agrupado por campo formativo, simplificado por ahora:
     subjects: [
-      { name: 'Lenguajes', average: 8.6, color: 'bg-orange-500' },
-      { name: 'Saberes', average: 8.8, color: 'bg-blue-500' },
-      { name: 'Ética', average: 8.7, color: 'bg-purple-500' },
-      { name: 'Comunitario', average: 8.9, color: 'bg-green-500' }
+      { name: 'Lenguajes', average: globalAverage, color: 'bg-orange-500' },
+      { name: 'Saberes', average: globalAverage, color: 'bg-blue-500' },
     ]
   };
 
@@ -181,9 +208,9 @@ export function DashboardScreen() {
             className="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-base font-bold rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-white/50 appearance-none shadow-sm"
           >
             <option className="text-slate-800" value={activeUser.grade}>{activeUser.grade} (Tu grupo)</option>
-            <option className="text-slate-800" value="1° A">1° A</option>
-            <option className="text-slate-800" value="2° A">2° A</option>
-            <option className="text-slate-800" value="3° B">3° B</option>
+            {groups.map(g => (
+              <option key={g.id} className="text-slate-800" value={g.name}>{g.name}</option>
+            ))}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white">
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
@@ -381,9 +408,12 @@ export function DashboardScreen() {
           </div>
           
           <div className="bg-blue-50 rounded-2xl px-4 py-2 mb-4 flex items-center justify-between">
-            <span className="text-blue-600 font-bold text-lg">
-              {attendanceStats.present} / {attendanceStats.total}
-            </span>
+            <div>
+              <span className="text-blue-600 font-bold text-lg block leading-none">
+                {attendanceStats.present} / {attendanceStats.total}
+              </span>
+              <span className="text-blue-400 text-[10px] font-bold uppercase">{lastActivity ? lastActivity.activityName : 'Sin datos'}</span>
+            </div>
             <span className="text-blue-600 text-sm font-medium">Asistieron</span>
           </div>
 
@@ -422,7 +452,7 @@ export function DashboardScreen() {
                     <h4 className="text-slate-800 font-bold text-sm truncate leading-none">{student.name}</h4>
                   </div>
                   <p className="text-slate-400 text-[11px] font-medium uppercase tracking-wider">
-                    {student.present ? `UP: ${student.studentId}` : 'Faltante'}
+                    {student.present ? `${student.studentId}` : 'Faltante'}
                   </p>
                 </div>
 
@@ -435,9 +465,9 @@ export function DashboardScreen() {
                       </div>
                     </>
                   ) : (
-                    <button className="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold px-3 py-2 rounded-xl active:scale-95 transition-all">
-                      PASAR
-                    </button>
+                    <div className="bg-slate-100 text-slate-400 text-[11px] font-bold px-3 py-2 rounded-xl flex justify-center items-center">
+                      AUSENTE
+                    </div>
                   )}
                 </div>
               </motion.div>

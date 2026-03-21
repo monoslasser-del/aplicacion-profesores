@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router';
 import { pdfGenerator } from '../../lib/pdfGenerator';
 import { CapacitorNfc } from '@capgo/capacitor-nfc';
 import { studentService } from '../../services/studentService';
+import { groupService, type Group } from '../../services/groupService';
 
 // Define the Student type
 interface Student {
@@ -48,13 +49,26 @@ export function StudentListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  // Manual Enrollment Modal State
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newGroup, setNewGroup] = useState('1A');
+  const [newGroup, setNewGroup] = useState<string>('');
   const [newCurp, setNewCurp] = useState('');
   const [isLinking, setIsLinking] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+
+  React.useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const gs = await groupService.getAllGroups();
+        setGroups(gs);
+        if (gs.length > 0) setNewGroup(gs[0].id.toString());
+      } catch (e) {
+        console.error("Error loading groups:", e);
+      }
+    };
+    loadGroups();
+  }, []);
 
   // Manual NFC Link Handler
   const handleManualLink = async () => {
@@ -73,6 +87,8 @@ export function StudentListScreen() {
           await studentService.addStudent({
             name: newName.trim(),
             enrollment_date: new Date().toISOString(),
+            curp: newCurp.trim() ? newCurp.trim() : null,
+            group_id: Number(newGroup),
             sync_status: 'PENDING'
           });
         } catch (dbError) {
@@ -87,7 +103,7 @@ export function StudentListScreen() {
         setTimeout(() => {
           setSuccess(false);
           setNewName('');
-          setNewGroup('1A');
+          if (groups.length > 0) setNewGroup(groups[0].id.toString());
           setNewCurp('');
           setIsEnrollModalOpen(false);
         }, 2000);
@@ -375,9 +391,10 @@ export function StudentListScreen() {
                   onChange={(e) => setNewGroup(e.target.value)}
                   className="appearance-none w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="1A">1° A</option>
-                  <option value="1B">1° B</option>
-                  <option value="2A">2° A</option>
+                  <option value="" disabled>Seleccione un grupo...</option>
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
                 </select>
               </div>
             </div>

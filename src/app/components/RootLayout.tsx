@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router';
-import { PencilRuler, Users, UserPlus, ClipboardList, Home } from 'lucide-react';
+import { PencilRuler, Users, UserPlus, ClipboardList, Home, BookOpen } from 'lucide-react';
 
 export function RootLayout() {
   const { pathname } = useLocation();
@@ -75,6 +75,17 @@ export function RootLayout() {
             >
               <Users className="w-6 h-6" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Grupos</span>
+            </NavLink>
+            <NavLink
+              to="/projects"
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center w-full h-full gap-1.5 transition-colors ${
+                  isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                }`
+              }
+            >
+              <BookOpen className="w-6 h-6" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Proyectos</span>
             </NavLink>
           </nav>
         )}

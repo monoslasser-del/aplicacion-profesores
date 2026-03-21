@@ -33,6 +33,18 @@ export const studentService = {
   },
 
   /**
+   * Agrega múltiples estudiantes a la base de datos local (Bulk Import)
+   */
+  addStudents: async (studentsData: Omit<Student, 'id'>[]): Promise<void> => {
+    try {
+      await db.students.bulkAdd(studentsData as Student[]);
+    } catch (error) {
+      console.error('Error adding students in bulk:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Elimina un estudiante por su ID
    */
   deleteStudent: async (id: number): Promise<void> => {
@@ -62,7 +74,12 @@ export const studentService = {
           await apiClient.post('/students', {
             name: student.name,
             enrollment_date: student.enrollment_date,
-            curp: student.curp
+            curp: student.curp || null,
+            nl: student.nl,
+            group_id: student.group_id || null, // from Dashboard updates
+            has_nfc: student.hasNfc,
+            nfc_tag_id: student.nfc_tag_id,
+            is_repetidor: student.isRepetidor,
           });
 
           // 3. Si tiene éxito, actualizar el estado local a 'SYNCED'

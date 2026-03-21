@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
 import { Mail, Lock, Check } from 'lucide-react';
+import { authService } from '../../services/authService';
 
 export function LoginScreen() {
   const navigate = useNavigate();
@@ -10,16 +11,19 @@ export function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
     
     setIsLoading(true);
-    // Simulate auth delay
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authService.login(email, password);
       navigate('/dashboard');
-    }, 1000);
+    } catch (error) {
+      alert("Credenciales incorrectas o usuario no encontrado");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const GoogleIcon = () => (

@@ -7,8 +7,7 @@
  * 3. Base URL configurable por entornos de desarrollo/producción.
  */
 
-// Simularemos una base URL para los ejemplos
-const BASE_URL = 'https://api.miproyectonem.com/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 interface RequestOptions extends RequestInit {
   data?: any;
@@ -21,8 +20,8 @@ export const apiClient = {
   request: async <T>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
     const url = `${BASE_URL}${endpoint}`;
     
-    // Aquí podrías obtener el token desde Capacitor Preferences
-    const token = "SIMULATED_TOKEN_123";
+    // Obtener el token desde localStorage
+    const token = localStorage.getItem('token');
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

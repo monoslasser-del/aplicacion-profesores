@@ -12,22 +12,42 @@ import {
   Users
 } from 'lucide-react';
 import { hardwareServices } from '../../utils/hardwareServices';
+import * as XLSX from 'xlsx';
+import { studentService } from '../../services/studentService';
+import { groupService, type Group } from '../../services/groupService';
 
-// --- MOCK DATA FOR NOW ---
-const MOCK_STUDENTS = [
-  { id: '1', nl: 1, name: 'Aguilar Martínez, Carlos', curp: 'AUMC123456...', hasNfc: false, isRepetidor: false },
-  { id: '2', nl: 2, name: 'Bautista Pérez, Sofía', curp: 'BAPS123456...', hasNfc: true, isRepetidor: false },
-  { id: '3', nl: 3, name: 'Cortés Ruiz, Diego', curp: 'CORD123456...', hasNfc: false, isRepetidor: false },
-  { id: '4', nl: 4, name: 'Domínguez Silva, Ana', curp: 'DOSA123456...', hasNfc: false, isRepetidor: false },
-  { id: '5', nl: 5, name: 'Estrada Torres, Luis', curp: 'ESTL123456...', hasNfc: true, isRepetidor: false },
-];
+interface UIStudent {
+  id: string;
+  nl: number;
+  name: string;
+  curp: string;
+  hasNfc: boolean;
+  nfc_tag_id?: string;
+  isRepetidor: boolean;
+}
 
 export function ImportStudentsScreen() {
   const navigate = useNavigate();
-  const [students, setStudents] = useState(MOCK_STUDENTS);
+  const [students, setStudents] = useState<UIStudent[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [hasFile, setHasFile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+
+  React.useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const gs = await groupService.getAllGroups();
+        setGroups(gs);
+        if (gs.length > 0) setSelectedGroup(gs[0].id.toString());
+      } catch (e) {
+        console.error("Error loading groups:", e);
+      }
+    };
+    loadGroups();
+  }, []);
   
   // NFC Modal State
   const [scanningStudent, setScanningStudent] = useState<string | null>(null);
@@ -39,6 +59,41 @@ export function ImportStudentsScreen() {
   );
 
   // File Upload Handlers
+  const processExcelData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json<any>(worksheet);
+
+        const newStudents: UIStudent[] = json.map((row: any, index: number) => {
+          const nl = row['No.'] || row['NL'] || row['N.L.'] || row['nl'] || (index + 1);
+          const name = row['Nombre'] || row['Alumno'] || row['Nombre del Alumno'] || 'Desconocido';
+          const curp = row['CURP'] || row['Curp'] || row['curp'] || '';
+
+          return {
+            id: `temp_${index}_${Date.now()}`,
+            nl: Number(nl),
+            name: String(name),
+            curp: String(curp),
+            hasNfc: false,
+            isRepetidor: false
+          };
+        });
+
+        setStudents(newStudents);
+        setHasFile(true);
+      } catch (error) {
+        console.error("Error al procesar Excel:", error);
+        alert("Hubo un error al leer el archivo Excel. Por favor verifica su formato.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -50,13 +105,46 @@ export function ImportStudentsScreen() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    // TODO: Integrate xlsx parsing here
-    setHasFile(true);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processExcelData(e.dataTransfer.files[0]);
+    }
   };
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // TODO: Integrate xlsx parsing here
-      setHasFile(true);
+      processExcelData(e.target.files[0]);
+    }
+  };
+
+  const saveStudents = async () => {
+    if (students.length === 0) return;
+    if (!selectedGroup) {
+      alert("Por favor selecciona un grupo primero.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const dbStudents = students.map(s => ({
+        name: s.name,
+        enrollment_date: new Date().toISOString(),
+        curp: s.curp,
+        nl: s.nl,
+        group_id: Number(selectedGroup),
+        hasNfc: s.hasNfc,
+        nfc_tag_id: s.nfc_tag_id,
+        isRepetidor: s.isRepetidor,
+        sync_status: 'PENDING' as const
+      }));
+
+      await studentService.addStudents(dbStudents);
+      studentService.syncPendingStudents().catch(console.error);
+
+      alert("Alumnos guardados correctamente.");
+      navigate('/dashboard');
+    } catch (error) {
+      console.error("Error al guardar alumnos:", error);
+      alert("No se pudieron guardar los alumnos.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -127,10 +215,31 @@ export function ImportStudentsScreen() {
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8">
         
-        {/* Step 1: Upload Area */}
+        {/* Step 1: Select Group */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-black">1</span>
+            <h2 className="text-sm font-bold tracking-widest text-slate-500 uppercase">Seleccionar Grupo</h2>
+          </div>
+          <select 
+            value={selectedGroup}
+            onChange={(e) => setSelectedGroup(e.target.value)}
+            className="w-full bg-white border-2 border-slate-200/60 rounded-2xl px-4 py-3 font-medium text-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none"
+          >
+            <option value="" disabled>Seleccione un grupo...</option>
+            {groups.map(g => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+        </section>
+
+        {/* Divider */}
+        <div className="h-px bg-slate-200/60 w-full" />
+
+        {/* Step 2: Upload Area */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-black">2</span>
             <h2 className="text-sm font-bold tracking-widest text-slate-500 uppercase">Cargar Excel</h2>
           </div>
           
@@ -178,11 +287,11 @@ export function ImportStudentsScreen() {
         {/* Divider */}
         <div className="h-px bg-slate-200/60 w-full" />
 
-        {/* Step 2: Student List & NFC Binding */}
+        {/* Step 3: Student List & NFC Binding */}
         <section className="space-y-4 pb-20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-black">2</span>
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-black">3</span>
               <h2 className="text-sm font-bold tracking-widest text-slate-500 uppercase">Vincular Tarjetas</h2>
             </div>
             {hasFile && (
@@ -292,6 +401,29 @@ export function ImportStudentsScreen() {
             </div>
 
           </div>
+
+          {/* Save Button */}
+          {students.length > 0 && (
+            <div className="pt-4 flex justify-end">
+              <button
+                onClick={saveStudents}
+                disabled={isSaving}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-green-500/30 transition-transform active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCcw className="w-5 h-5 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    Guardar y Finalizar
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </section>
       </div>
 

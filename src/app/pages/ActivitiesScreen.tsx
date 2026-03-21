@@ -8,8 +8,10 @@ import {
   MoreHorizontal, Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { activityService, Activity } from '../../services/activityService';
+import { Loader2, AlertCircle } from 'lucide-react';
 
-// Tipos de datos mock
+// Tipos de datos
 type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
 type ActivityDetails = {
   id: string;
@@ -41,6 +43,29 @@ export function ActivitiesScreen() {
   // New Activity State
   const [activityName, setActivityName] = useState('');
   const [activityType, setActivityType] = useState('registro'); // 'registro', 'participacion', 'calificada'
+
+  // Server state
+  const [serverActivities, setServerActivities] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // Fetch from server on mount
+  React.useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        setIsLoading(true);
+        setApiError(null);
+        // hardcode group_id 1 for now
+        const data = await activityService.getActivities(1);
+        setServerActivities(data);
+      } catch (err: any) {
+        setApiError(err.message || 'Error al conectar con el servidor.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchActivities();
+  }, []);
 
   const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
   const Icon = currentCampo.icon;
@@ -108,24 +133,35 @@ export function ActivitiesScreen() {
     return <span className="font-bold text-sm text-gray-700">{status}</span>;
   };
 
-  const handleCreateAndCapture = () => {
+  const handleCreateAndCapture = async () => {
     if (!activityName.trim()) return;
 
-    // TODO: Create the activity in the database here
+    try {
+      // Create the activity in the backend
+      const newAct = await activityService.createActivity({
+        title: activityName.trim(),
+        subject: currentCampo.name,
+        group_id: 1,
+        due_date: new Date().toISOString().split('T')[0]
+      });
 
-    // Navigate to the detail view of the new activity
-    // For now we use a dummy ID 'new'
-    navigate('/activity/new', {
-      state: {
-        activityName: activityName.trim(),
-        campoName: currentCampo.name,
-        campoColor: currentCampo.color,
-        activityType: activityType
-      }
-    });
-    
-    // Close the modal
-    setShowNewModal(false);
+      // Update local state without re-fetching everything
+      setServerActivities([...serverActivities, newAct]);
+
+      navigate('/activity/new', {
+        state: {
+          activityId: newAct.id, // we pass the real backend ID
+          activityName: activityName.trim(),
+          campoName: currentCampo.name,
+          campoColor: currentCampo.color,
+          activityType: activityType
+        }
+      });
+      
+      setShowNewModal(false);
+    } catch (err) {
+      alert("Error al crear la actividad en el servidor. Revisa tu conexión.");
+    }
   };
 
   return (
@@ -212,9 +248,21 @@ export function ActivitiesScreen() {
         </div>
       </div>
 
+      {apiError && (
+        <div className="mx-4 mb-2 p-3 bg-red-100/80 backdrop-blur border border-red-200 rounded-xl flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-red-700 text-sm font-semibold">{apiError}</p>
+        </div>
+      )}
+
       {/* Content Area */}
       <div className={`flex-1 flex flex-col overflow-y-auto ${viewMode === 'detalle' ? 'px-0 pb-0 pt-2' : 'px-4 pb-4'} relative`} onClick={() => selectedCell && setSelectedCell(null)}>
-        {viewMode === 'resumen' ? (
+        {isLoading ? (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
+            <p className="text-gray-500 font-bold text-sm">Sincronizando NEM...</p>
+          </div>
+        ) : viewMode === 'resumen' ? (
           <div className="space-y-3">
             {students.map((student, i) => (
               <motion.div 

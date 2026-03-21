@@ -56,10 +56,6 @@ export const hardwareServices = {
     }
   },
 
-  /**
-   * Inicializa el listener base de NFC (Template para reusar)
-   * Devuelve una Promesa que se resuelve con el ID del tag leído.
-   */
   initNfcListener: async (): Promise<any> => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -77,6 +73,31 @@ export const hardwareServices = {
         reject(error);
       }
     });
+  },
+
+  /**
+   * Inicia un escaneo continuo de NFC sin detenerse tras leer una tarjeta.
+   * Útil para pasar lista o capturar múltiples tareas rápidamente.
+   * Llama a la función onRead cada vez que detecta una tarjeta.
+   * Devuelve una función para detener el escaneo y limpiar el listener.
+   */
+  startContinuousNfcListener: async (onRead: (tagData: any) => void): Promise<() => void> => {
+    try {
+      await CapacitorNfc.startScanning();
+      const listener = await CapacitorNfc.addListener('nfcEvent', (event: any) => {
+        const tagData = event.tag || event;
+        onRead(tagData);
+      });
+      
+      // Return a cleanup function
+      return () => {
+        CapacitorNfc.stopScanning();
+        listener.remove();
+      };
+    } catch (error) {
+      console.error("Error al iniciar escaneo continuo NFC:", error);
+      return () => {}; // empty cleanup fallback
+    }
   },
 
   /**
