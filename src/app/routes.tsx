@@ -15,8 +15,8 @@ import { RegisterScreen } from "./pages/RegisterScreen";
 import { ImportStudentsScreen } from "./pages/ImportStudentsScreen";
 import { ActivityDetailScreen } from "./pages/ActivityDetailScreen";
 import { CalendarScreen } from "./pages/CalendarScreen";
-import { AddCalendarEventScreen } from "./pages/AddCalendarEventScreen";
-import { PricingScreen } from "./pages/PricingScreen";
+import { ProjectsScreen } from "./pages/ProjectsScreen";
+import { ExamBuilderScreen } from "./pages/ExamBuilderScreen";
 
 export const router = createHashRouter([
   {
@@ -38,7 +38,8 @@ export const router = createHashRouter([
       { path: "activities", element: <ActivitiesScreen /> },
       { path: "activity/:id", element: <ActivityDetailScreen /> },
       { path: "calendar", element: <CalendarScreen /> },
-      { path: "add-event", element: <AddCalendarEventScreen /> },
+      { path: "projects", element: <ProjectsScreen /> },
+      { path: "exam-builder", element: <ExamBuilderScreen /> },
     ],
   },
 ]);

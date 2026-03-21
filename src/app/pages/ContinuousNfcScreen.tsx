@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Nfc, CheckCircle2, AlertTriangle, XCircle, Hand, Check, X, ArrowLeft, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
+import { App } from '@capacitor/app';
+import { CapacitorNfc } from '@capgo/capacitor-nfc';
+import { hardwareServices } from '../../utils/hardwareServices';
+import { studentService } from '../../services/studentService';
+import { db, type Student } from '../../storage/db';
 
 interface ScanRecord {
-  id: string;
+  id: string; // NFC tag or unique ID
+  studentId?: number; // DB ID if recognized
   name: string;
   time: string;
   status: 'success' | 'warning' | 'error';
@@ -16,35 +22,149 @@ export function ContinuousNfcScreen() {
   const location = useLocation();
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [isScanning, setIsScanning] = useState(true);
+  const [studentsData, setStudentsData] = useState<Student[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Use a ref to always have the latest scans within the listener callback
+  const scansRef = useRef(scans);
+  useEffect(() => {
+    scansRef.current = scans;
+  }, [scans]);
 
   // Read state from navigation
   const state = location.state || {};
   const isGraded = state.isGraded || false;
-  const activityName = state.activityName || 'Lectura de comprensión';
-  const campoName = state.campoName || 'Lenguajes';
+  const activityName = state.activityName || 'Asistencia / Tarea';
+  const campoName = state.campoName || 'General';
   const evalScale = state.evalScale || 'numerica';
 
-  const totalStudents = 30;
+  const totalStudents = studentsData.length || 0;
   const registeredCount = scans.filter(s => s.status === 'success').length;
 
-  // Simulate incoming NFC scans
+  useEffect(() => {
+    studentService.getAllStudents().then(data => {
+      setStudentsData(data);
+    });
+  }, []);
+
+  // OPTIMIZACIÓN 1: Creación de Diccionario Hash O(1) en vez de iterar el array por cada tagNFC
+  const studentsMap = useMemo(() => {
+    const map = new Map<string, Student>();
+    studentsData.forEach(s => {
+      if (s.nfc_tag_id) map.set(s.nfc_tag_id, s);
+    });
+    return map;
+  }, [studentsData]);
+
+  // OPTIMIZACIÓN 2: Capacitor Background Lifecycle para no trabar el Lector NFC
+  useEffect(() => {
+    const appStateListener = App.addListener('appStateChange', async ({ isActive }) => {
+      if (isActive && isScanning) {
+        try { await CapacitorNfc.startScanning(); } catch (e) {}
+      } else {
+        try { await CapacitorNfc.stopScanning(); } catch (e) {}
+      }
+    });
+
+    return () => {
+      appStateListener.then(listener => listener.remove());
+    };
+  }, [isScanning]);
+
   useEffect(() => {
     if (!isScanning) return;
+    
+    let stopNfc: (() => void) | null = null;
+    
+    const initNfc = async () => {
+      stopNfc = await hardwareServices.startContinuousNfcListener((tagData) => {
+        const idString = tagData.id ? (Array.isArray(tagData.id) ? tagData.id.join('-') : String(tagData.id)) : String(tagData);
+        
+        // Find if student exists utilizando acceso O(1) en vez de .find
+        const student = studentsMap.get(idString);
+        const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-    const timer = setInterval(() => {
-      const mockScans: ScanRecord[] = [
-        { id: Math.random().toString(), name: 'Sofía Álvarez Gómez', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'success' },
-        { id: Math.random().toString(), name: 'Mateo López Ruiz', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'success' },
-        { id: Math.random().toString(), name: 'Ricardo Hernández Rivera', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'warning', message: 'Ya registrado' },
-        { id: Math.random().toString(), name: 'Desconocido', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'error', message: 'Tarjeta no válida' },
-      ];
+        if (student) {
+          // Check if already scanned
+          const already = scansRef.current.find(sc => sc.studentId === student.id && sc.status === 'success');
+          if (already) {
+            hardwareServices.vibrateError();
+            setScans(prev => [{
+              id: Math.random().toString(),
+              studentId: student.id,
+              name: student.name,
+              time: timeStr,
+              status: 'warning',
+              message: 'Ya registrado'
+            }, ...prev]);
+          } else {
+            hardwareServices.vibrateSuccess();
+            setScans(prev => [{
+              id: idString + Math.random(),
+              studentId: student.id,
+              name: student.name,
+              time: timeStr,
+              status: 'success'
+            }, ...prev]);
+          }
+        } else {
+          hardwareServices.vibrateError();
+          setScans(prev => [{
+            id: idString + Math.random(),
+            name: 'Desconocido',
+            time: timeStr,
+            status: 'error',
+            message: 'Tarjeta no válida'
+          }, ...prev]);
+        }
+      });
+    };
 
-      const newScan = mockScans[Math.floor(Math.random() * mockScans.length)];
-      setScans(prev => [newScan, ...prev]);
-    }, 4000);
+    if (studentsData.length > 0) {
+      initNfc();
+    }
+    
+    return () => {
+      if (stopNfc) stopNfc();
+    };
+  }, [isScanning, studentsData, studentsMap]);
 
-    return () => clearInterval(timer);
-  }, [isScanning]);
+  const finalizarCaptura = async () => {
+    if (scans.filter(s => s.status === 'success').length === 0) {
+      if (!confirm("No hay alumnos registrados. ¿Finalizar de todos modos?")) return;
+    }
+
+    setIsScanning(false);
+    setIsSaving(true);
+    try {
+      // Save to database
+      const successRecords = scans.filter(s => s.status === 'success' && s.studentId);
+      
+      const sessionRecord = {
+        activityName,
+        campoName,
+        date: new Date().toISOString(),
+        records: successRecords.map(s => ({
+          studentId: s.studentId!,
+          time: s.time,
+          status: 'success' as const
+        })),
+        sync_status: 'PENDING' as const
+      };
+
+      const activityId = await db.activities.add(sessionRecord);
+      
+      if (isGraded) {
+        navigate('/evaluation-capture', { state: { ...state, sessionData: { ...sessionRecord, id: activityId } } });
+      } else {
+        navigate('/activities');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error al guardar la captura.');
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden">
@@ -174,18 +294,12 @@ export function ContinuousNfcScreen() {
           <span className="text-sm">Manual</span>
         </button>
         <button 
-          onClick={() => {
-            setIsScanning(false);
-            if (isGraded) {
-              navigate('/evaluation-capture', { state });
-            } else {
-              navigate('/activities');
-            }
-          }}
-          className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-2xl flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-lg shadow-blue-200"
+          onClick={finalizarCaptura}
+          disabled={isSaving}
+          className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-2xl flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-lg shadow-blue-200 disabled:opacity-50"
         >
           <Check className="w-5 h-5" />
-          {isGraded ? 'Evaluar Alumnos' : 'Finalizar'}
+          {isSaving ? 'Guardando...' : (isGraded ? 'Evaluar Alumnos' : 'Finalizar y Guardar')}
         </button>
       </div>
     </div>

@@ -7,11 +7,7 @@
  * 3. Base URL configurable por entornos de desarrollo/producción.
  */
 
-// La base URL se configura en el archivo .env (VITE_API_BASE_URL)
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://tech.ecteam.mx/api';
-
-// Clave con la que guardamos el token en localStorage
-export const AUTH_TOKEN_KEY = 'auth_token';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 interface RequestOptions extends RequestInit {
   data?: any;
@@ -24,9 +20,9 @@ export const apiClient = {
    */
   request: async <T>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
     const url = `${BASE_URL}${endpoint}`;
-
-    // Leer el token JWT desde localStorage
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    
+    // Obtener el token desde localStorage
+    const token = localStorage.getItem('token');
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, Check, AlertCircle, ArrowRight, BookOpen } from 'lucide-react';
+import { Mail, Lock, Check } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { googleAuthService } from '../../services/googleAuthService';
 
 export function LoginScreen() {
   const navigate = useNavigate();
@@ -19,13 +18,11 @@ export function LoginScreen() {
     if (!email || !password) return;
 
     setIsLoading(true);
-    setError(null);
-
     try {
-      await authService.login({ email, password });
+      await authService.login(email, password);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message ?? 'Ocurrió un error. Intenta de nuevo.');
+    } catch (error) {
+      alert("Credenciales incorrectas o usuario no encontrado");
     } finally {
       setIsLoading(false);
     }

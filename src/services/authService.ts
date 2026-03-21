@@ -1,85 +1,106 @@
-import { apiClient, AUTH_TOKEN_KEY } from '../lib/apiClient';
+import { db, type UserProfile } from '../storage/db';
+import { apiClient } from '../lib/apiClient';
 
-// ---- Tipos ----
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  is_active: boolean;
-  estado: string | null;
-  municipio: string | null;
-  google_id: string | null;
-}
-
-export interface AuthResponse {
-  data: User;
-  token: string;
-  token_type: string;
-}
-
-// ---- Servicio ----
+/**
+ * Servicio encargado de la autenticación y registro de docentes.
+ */
 export const authService = {
   /**
-   * Registra un nuevo usuario y guarda el token en localStorage.
+   * Registra un nuevo docente tanto localmente como (opcionalmente) en el servidor.
    */
-  register: async (payload: {
-    name: string;
-    email: string;
-    password: string;
-    password_confirmation: string;
-    estado: string;
-    municipio: string;
-  }): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/v1/register', payload, { skipAuth: true });
-    localStorage.setItem(AUTH_TOKEN_KEY, response.token);
-    return response;
-  },
-
-  /**
-   * Inicia sesión y guarda el token en localStorage.
-   */
-  login: async (payload: {
-    email: string;
-    password: string;
-  }): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/v1/login', payload, { skipAuth: true });
-    localStorage.setItem(AUTH_TOKEN_KEY, response.token);
-    return response;
-  },
-
-  /**
-   * Cierra la sesión del usuario actual en el servidor y limpia el localStorage.
-   */
-  logout: async (): Promise<void> => {
+  register: async (data: { name: string; email: string; grade: string; password?: string }) => {
     try {
-      await apiClient.post('/v1/logout', {});
-    } finally {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
+      // 1. Intentar registrarlo en la API en la nube
+      try {
+        const response = await apiClient.post<any>('/register', data);
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+        }
+      } catch (apiError) {
+        console.warn('No se pudo registrar en servidor (offline o error):', apiError);
+      }
+
+      // 2. Guardar perfil localmente en IndexedDB
+      // Primero limpiamos perfiles anteriores para mantener solo 1 sesión activa
+      await db.userProfile.clear();
+
+      const newProfile: UserProfile = {
+        name: data.name,
+        email: data.email,
+        phone: '0000000000', // Default o pedir en form
+        role: 'Docente',
+        grade: data.grade
+      };
+
+      const id = await db.userProfile.add(newProfile);
+      
+      // Simular tiempo de carga
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      return id;
+    } catch (error) {
+      console.error('Error en registro:', error);
+      throw error;
     }
   },
 
   /**
-   * Obtiene el perfil del usuario autenticado actualmente.
+   * Inicia sesión validando contra la nube o local si está offline.
    */
-  me: async (): Promise<User> => {
-    const response = await apiClient.get<{ data: User }>('/v1/me');
-    return response.data;
+  login: async (email: string, password?: string) => {
+    try {
+      // 1. Login en API en la nube
+      try {
+        const response = await apiClient.post<any>('/login', { email, password });
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+          
+          if (response.data) {
+            await db.userProfile.clear(); // Limpiamos perfiles anteriores
+            const newProfile = {
+              name: response.data.name || email,
+              email: response.data.email || email,
+              phone: response.data.phone || '0000000000',
+              role: response.data.role || 'Docente',
+              grade: response.data.grade || 'N/A'
+            };
+            await db.userProfile.add(newProfile);
+          }
+        }
+      } catch (apiError) {
+        console.warn('Login en la nube falló. Intentando offline fallback...', apiError);
+      }
+      
+      // Simular tiempo de carga si no hubo API
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // 2. Buscar si ya existe el usuario localmente
+      const users = await db.userProfile.where('email').equals(email).toArray();
+      
+      if (users.length === 0) {
+        throw new Error('Usuario no encontrado localmente');
+      }
+
+      return users[0];
+    } catch (error) {
+      console.error('Error en login:', error);
+      throw error;
+    }
   },
 
   /**
-   * Autentica al usuario con un Google ID token.
-   * El token lo obtiene el frontend con el plugin Capacitor Google Auth.
+   * Obtiene el usuario activo actualmente
    */
-  loginWithGoogle: async (accessToken: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/v1/auth/google', { access_token: accessToken }, { skipAuth: true });
-    localStorage.setItem(AUTH_TOKEN_KEY, response.token);
-    return response;
+  getActiveUser: async (): Promise<UserProfile | null> => {
+    const users = await db.userProfile.toArray();
+    return users.length > 0 ? users[users.length - 1] : null;
   },
 
   /**
-   * Comprueba si hay un token guardado en localStorage.
+   * Cierra la sesión (Limpia datos locales si es necesario)
    */
-  isAuthenticated: (): boolean => {
-    return !!localStorage.getItem(AUTH_TOKEN_KEY);
-  },
+  logout: async () => {
+    localStorage.removeItem('token');
+    // await db.userProfile.clear();
+  }
 };

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, User, MapPin, AlertCircle, ArrowRight, BookOpen } from 'lucide-react';
+import { Mail, Lock, User, GraduationCap } from 'lucide-react';
 import { authService } from '../../services/authService';
-import { googleAuthService } from '../../services/googleAuthService';
 
 export function RegisterScreen() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [grade, setGrade] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [estado, setEstado] = useState('');
@@ -18,28 +18,22 @@ export function RegisterScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isFormValid = !!(name && email && password && password === confirmPassword && estado && municipio && gradoAsignado);
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
-
+    if (!name || !email || !grade || !password || password !== confirmPassword) return;
+    
     setIsLoading(true);
-    setError(null);
-
     try {
       await authService.register({
         name,
         email,
-        password,
-        password_confirmation: confirmPassword,
-        estado,
-        municipio,
-        grado_asignado: gradoAsignado,
+        grade,
+        password
       });
-      navigate('/planes');
-    } catch (err: any) {
-      setError(err.message ?? 'Ocurrió un error. Intenta de nuevo.');
+
+      navigate('/dashboard');
+    } catch (error) {
+      alert("Error al intentar registrar la cuenta");
     } finally {
       setIsLoading(false);
     }
@@ -83,9 +77,139 @@ export function RegisterScreen() {
         </div>
       </div>
 
-      {/* Main Register Area */}
-      <div className="w-full lg:w-[55%] flex justify-center p-6 sm:p-10 xl:p-16 relative overflow-y-auto max-h-screen no-scrollbar">
-        <div className="absolute top-0 left-0 w-full h-full bg-blue-50/50 -z-10 lg:hidden block"></div>
+      {/* Register Form */}
+      <div className="flex-1 px-6 pt-6 pb-8 flex flex-col z-0">
+        <motion.form 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          onSubmit={handleRegister}
+          className="flex flex-col gap-4 flex-1"
+        >
+          {/* Name Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Nombre Completo</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <User className="w-5 h-5 text-slate-400" />
+              </div>
+              <input 
+                type="text" 
+                required 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                placeholder="Ej. María López"
+                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Email Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Correo Electrónico</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <Mail className="w-5 h-5 text-slate-400" />
+              </div>
+              <input 
+                type="email" 
+                required 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                placeholder="correo@ejemplo.com"
+                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Grade/Group Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Grado y Grupo</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <GraduationCap className="w-5 h-5 text-slate-400" />
+              </div>
+              <input 
+                type="text" 
+                required 
+                value={grade} 
+                onChange={e => setGrade(e.target.value)} 
+                placeholder="Ej. 3° A, 1° B"
+                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-bold text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm uppercase uppercase-placeholder"
+              />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Contraseña</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <Lock className="w-5 h-5 text-slate-400" />
+              </div>
+              <input 
+                type="password" 
+                required 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                placeholder="••••••••"
+                className="w-full bg-white border-2 border-slate-200/60 rounded-2xl pl-12 pr-4 py-3.5 font-black text-slate-900 tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm placeholder:tracking-normal placeholder:font-medium"
+              />
+            </div>
+          </div>
+
+          {/* Confirm Password Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">Confirmar Contraseña</label>
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <Lock className="w-5 h-5 text-slate-400" />
+              </div>
+              <input 
+                type="password" 
+                required 
+                value={confirmPassword} 
+                onChange={e => setConfirmPassword(e.target.value)} 
+                placeholder="••••••••"
+                className={`w-full bg-white border-2 ${confirmPassword && password !== confirmPassword ? 'border-red-400' : 'border-slate-200/60'} rounded-2xl pl-12 pr-4 py-3.5 font-black text-slate-900 tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm placeholder:tracking-normal placeholder:font-medium`}
+              />
+            </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-red-500 text-xs font-bold pl-1 pt-1">Las contraseñas no coinciden.</p>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <motion.button 
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            disabled={isLoading || !name || !email || !grade || !password || password !== confirmPassword}
+            type="submit"
+            className={`w-full py-4 rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center mt-2 ${
+              (!isLoading && name && email && grade && password && password === confirmPassword) ? 'bg-blue-600 text-white shadow-blue-600/30' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            {isLoading ? <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div> : <span>Crear cuenta</span>}
+          </motion.button>
+          
+          <div className="relative flex items-center py-2">
+             <div className="flex-grow border-t border-slate-200"></div>
+             <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase">o</span>
+             <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          {/* Google Button */}
+          <motion.button 
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            className="w-full bg-white border-2 border-slate-200 text-slate-700 font-bold text-base py-3.5 rounded-2xl shadow-sm transition-all hover:bg-slate-50 flex items-center justify-center gap-3"
+          >
+            <GoogleIcon />
+            <span>Registrarse con Google</span>
+          </motion.button>
+
+        </motion.form>
         
         <div className="w-full max-w-[500px] my-auto">
           {/* Mobile Logo */}

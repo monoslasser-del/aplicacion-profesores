@@ -1,42 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   ChevronLeft, 
   CheckCircle2, 
   XCircle,
-  Save,
   Clock,
-  User,
-  MoreVertical,
-  Check
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
+import { studentService } from '../../services/studentService';
+import { db } from '../../storage/db';
+import { activityService, GradePayload } from '../../services/activityService';
+
+interface UIStudent {
+  id: number;
+  listNumber: number;
+  name: string;
+  status: 'entregado' | 'no_entregado';
+  grade: number | string | null;
+}
 
 export function EvaluationCaptureScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Try to parse state passed from creation. If none, use defaults
   const state = location.state || {};
-  const activityName = state.activityName || 'Lectura de comprensión';
-  const campoName = state.campoName || 'Lenguajes';
+  const sessionData = state.sessionData || null; // Comes from NFC
+  const activityId = state.activityId || sessionData?.activityId || null; // ID de Laravel si existe
+  const activityName = state.activityName || sessionData?.activityName || 'Lectura de comprensión';
+  const campoName = state.campoName || sessionData?.campoName || 'Lenguajes';
   const campoColor = state.campoColor || 'bg-orange-500';
   const evalScale = state.evalScale || 'numerica'; // 'numerica' or 'estatus'
 
-  const [students, setStudents] = useState([
-    { id: 1, listNumber: 1, name: 'Isabela Martínez Solano', status: 'entregado', grade: null },
-    { id: 2, listNumber: 2, name: 'Ricardo Hernández Rivera', status: 'entregado', grade: null },
-    { id: 3, listNumber: 3, name: 'Valeria Santos López', status: 'no_entregado', grade: null },
-    { id: 4, listNumber: 4, name: 'Mateo López Ruiz', status: 'entregado', grade: null },
-  ]);
+  const [students, setStudents] = useState<UIStudent[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const setGrade = (studentId, grade) => {
+  useEffect(() => {
+    studentService.getAllStudents().then(data => {
+      // Sort by NL
+      data.sort((a, b) => (a.nl || 0) - (b.nl || 0));
+
+      const attendedIds = sessionData ? sessionData.records.map((r: any) => r.studentId) : [];
+
+      const mapped = data.map(s => {
+        // En captura NFC, los success records marcan "entregaron/asistieron". Si no hay sesión previa, todos asistieron.
+        const status = (sessionData && !attendedIds.includes(s.id)) ? 'no_entregado' : 'entregado';
+        return {
+          id: s.id,
+          listNumber: s.nl || 0,
+          name: s.name,
+          status: status as 'entregado' | 'no_entregado',
+          grade: null
+        };
+      });
+      setStudents(mapped);
+    });
+  }, [sessionData]);
+
+  const setGrade = (studentId: number, grade: number | string) => {
     setStudents(prev => prev.map(s => 
       s.id === studentId ? { ...s, grade } : s
     ));
   };
 
-  const toggleStatus = (studentId) => {
+  const toggleStatus = (studentId: number) => {
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
         const newStatus = s.status === 'entregado' ? 'no_entregado' : 'entregado';
@@ -46,7 +72,18 @@ export function EvaluationCaptureScreen() {
     }));
   };
 
-  const getStatusColor = (status) => {
+  const applyGradeToAll = () => {
+    const firstGraded = students.find(s => s.grade !== null);
+    if (!firstGraded) return alert("Puntúa al menos a un alumno primero para copiar ese valor al resto.");
+    
+    if(confirm(`¿Deseas aplicar la calificación de "${firstGraded.grade}" a los demás alumnos que han entregado?`)) {
+      setStudents(prev => prev.map(s => 
+        s.status === 'entregado' && s.grade === null ? { ...s, grade: firstGraded.grade } : s
+      ));
+    }
+  };
+
+  const getStatusColor = (status: string) => {
     switch(status) {
       case 'Requiere apoyo': return 'bg-red-100 text-red-700 border-red-200';
       case 'En proceso': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
@@ -88,7 +125,7 @@ export function EvaluationCaptureScreen() {
         <p className="text-sm font-bold text-gray-700">
           <span className="text-green-600">{students.filter(s => s.status === 'entregado').length}</span> entregaron
         </p>
-        <button className="text-sm font-bold text-blue-600 active:text-blue-700">
+        <button onClick={applyGradeToAll} className="text-sm font-bold text-blue-600 active:text-blue-700">
           Aplicar valor a todos
         </button>
       </div>
@@ -180,14 +217,68 @@ export function EvaluationCaptureScreen() {
       {/* Footer Actions */}
       <div className="bg-white border-t border-gray-100 p-4 shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-20">
         <div className="flex gap-3">
-          <button className="flex-1 bg-white border-2 border-gray-200 text-gray-700 font-bold py-3.5 rounded-xl active:scale-95 transition-all">
-            Guardar Borrador
-          </button>
           <button 
-            onClick={() => navigate('/activities')}
-            className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl active:scale-95 transition-all shadow-lg shadow-blue-200"
+            onClick={async () => {
+              setIsSaving(true);
+              try {
+                // 1. Convert grades to number for NEM
+                const records = students.map(s => {
+                  let numScore = 5;
+                  if (typeof s.grade === 'number') numScore = s.grade;
+                  else if (s.grade === 'Requiere apoyo') numScore = 5;
+                  else if (s.grade === 'En proceso') numScore = 8;
+                  else if (s.grade === 'En desarrollo' || s.grade === 'Bien') numScore = 10;
+                  
+                  return {
+                    studentId: s.id,
+                    time: new Date().toLocaleTimeString(),
+                    status: s.status === 'entregado' ? 'success' as const : 'error' as const,
+                    score: s.status === 'entregado' ? numScore : 0
+                  };
+                });
+
+                // 2. Intentar guardar masivamente en el backend si tenemos el ID (Opción B del prompt)
+                if (activityId) {
+                   const bulkGrades: GradePayload[] = records
+                     .filter(r => r.status === 'success') // Opcional: solo calificados
+                     .map(r => ({
+                        student_id: r.studentId,
+                        score: r.score
+                     }));
+
+                   if (bulkGrades.length > 0) {
+                     await activityService.submitGrades(activityId, bulkGrades);
+                   }
+                }
+
+                // 3. Fallback / Sincronización Local en IndexedDB
+                const newActivity = {
+                  activityName,
+                  campoName,
+                  date: new Date().toISOString(),
+                  records,
+                  sync_status: activityId ? 'SYNCED' as const : 'PENDING' as const
+                };
+
+                if (sessionData && sessionData.id) {
+                  await db.activities.update(sessionData.id, newActivity);
+                } else {
+                  await db.activities.add(newActivity);
+                }
+                
+                alert("Calificaciones sincronizadas y guardadas correctamente.");
+                navigate('/dashboard');
+              } catch (e) {
+                console.error(e);
+                alert("No se pudo conectar con el servidor, guardado localmente (Offline).");
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            disabled={isSaving}
+            className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl active:scale-95 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
           >
-            Finalizar Captura
+            {isSaving ? 'Guardando...' : 'Finalizar y Guardar'}
           </button>
         </div>
       </div>
