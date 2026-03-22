@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { CapacitorNfc } from '@capgo/capacitor-nfc';
 import { 
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { studentService } from '../../services/studentService';
+import { authService, type User as AuthUser } from '../../services/authService';
 import { pdfGenerator } from '../../lib/pdfGenerator';
 import { hardwareServices } from '../../utils/hardwareServices';
 
@@ -34,21 +35,27 @@ export function DashboardScreen() {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-
   const [recentStudentsDb, setRecentStudentsDb] = useState<any[]>([]);
-  
-  // Use a default user for now
-  const activeUser = { name: 'Docente', grade: '3° A', role: 'Educador' };
-  
-  const [group, setGroup] = useState(activeUser.grade);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(authService.getStoredUser());
 
-  React.useEffect(() => {
+  // Datos del docente reales
+  const teacherName  = authUser?.name  ?? 'Docente';
+  const groupName    = authUser?.group_info?.name ?? (authUser?.grade && authUser?.group ? `${authUser.grade}° ${authUser.group}` : 'Mi Grupo');
+  const [group, setGroup] = useState(groupName);
+
+  useEffect(() => {
+    // Refrescar perfil del servidor en segundo plano
+    authService.me().then(u => {
+      setAuthUser(u);
+      setGroup(u.group_info?.name ?? (u.grade && u.group ? `${u.grade}° ${u.group}` : group));
+    }).catch(() => {});
+
     const loadDashboardData = async () => {
       try {
         const studentsData = await studentService.getStudents();
         setRecentStudentsDb(studentsData);
       } catch (e) {
-        console.error("Dashboard fetch error", e);
+        console.error('Dashboard fetch error', e);
       }
     };
     loadDashboardData();
@@ -154,7 +161,7 @@ export function DashboardScreen() {
             </button>
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 shadow-inner flex items-center justify-center border-2 border-white/20">
-                <span className="text-white font-black text-lg">{activeUser.name.charAt(0)}</span>
+                <span className="text-white font-black text-lg">{teacherName.charAt(0)}</span>
               </div>
             </div>
           </div>
@@ -177,26 +184,17 @@ export function DashboardScreen() {
             animate={{ opacity: 1, x: 0 }}
             className="text-white text-3xl font-black mb-1 leading-tight"
           >
-            Hola, <br/>{activeUser.name.split(' ')[0]} 👋
+          Hola, <br/>{teacherName.split(' ')[0]} 👋
           </motion.h2>
           <p className="text-blue-100 font-medium text-sm">Tu aula virtual está lista para hoy.</p>
         </div>
 
-        {/* Group Selector Toggle */}
+        {/* Group Selector — Read only, muestra el grupo del docente */}
         <div className="relative mt-4 z-10">
-          <select
-            value={group}
-            onChange={(e) => setGroup(e.target.value)}
-            className="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-base font-bold rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-white/50 appearance-none shadow-sm"
-          >
-            <option className="text-slate-800" value={activeUser.grade}>{activeUser.grade} (Tu grupo)</option>
-            <option className="text-slate-800" value="1° A">1° A</option>
-            <option className="text-slate-800" value="2° A">2° A</option>
-            <option className="text-slate-800" value="3° B">3° B</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white">
+          <div className="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-base font-bold rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-sm">
+            <span>{group} (Tu grupo)</span>
             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-               <ChevronRight className="w-4 h-4 rotate-90" />
+              <ChevronRight className="w-4 h-4 rotate-90" />
             </div>
           </div>
         </div>
@@ -222,11 +220,11 @@ export function DashboardScreen() {
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-red-500 shadow-inner flex items-center justify-center border-2 border-white/20">
-                   <span className="text-white font-black text-2xl">{activeUser.name.charAt(0)}</span>
+                   <span className="text-white font-black text-2xl">{teacherName.charAt(0)}</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">{activeUser.name}</h3>
-                  <p className="text-white/80 text-sm">{activeUser.grade} · {activeUser.role}</p>
+                  <h3 className="text-white font-bold text-lg">{teacherName}</h3>
+                  <p className="text-white/80 text-sm">{groupName} · Educador</p>
                 </div>
               </div>
             </div>

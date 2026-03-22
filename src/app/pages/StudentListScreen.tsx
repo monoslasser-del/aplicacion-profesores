@@ -10,6 +10,7 @@ import { pdfGenerator } from '../../lib/pdfGenerator';
 import { CapacitorNfc } from '@capgo/capacitor-nfc';
 import { studentService } from '../../services/studentService';
 import type { Student as ApiStudent } from '../../services/studentService';
+import { authService } from '../../services/authService';
 
 // ── Local shape ──────────────────────────────────────────────
 interface Student {
@@ -44,10 +45,13 @@ export function StudentListScreen() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   // Enrollment
+  const storedUser = authService.getStoredUser();
+  const teacherGroupId = storedUser?.group_info?.id ?? null;
+  const teacherGroupName = storedUser?.group_info?.name ?? (storedUser?.grade && storedUser?.group ? `${storedUser.grade}° ${storedUser.group}` : 'Mi Grupo');
+
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [newName,    setNewName]    = useState('');
   const [newCurp,    setNewCurp]    = useState('');
-  const [newGroup,   setNewGroup]   = useState('1A');
   const [isLinking,  setIsLinking]  = useState(false);
   const [linkSuccess, setLinkSuccess] = useState(false);
   const [saveError,  setSaveError]  = useState<string | null>(null);
@@ -89,7 +93,7 @@ export function StudentListScreen() {
           ? Array.from(tagData.id as number[]).map((i) => i.toString(16).padStart(2, '0')).join(':')
           : 'unknown-uid';
         try {
-          await studentService.createStudent({ name: newName.trim(), curp: newCurp.trim(), nfc_tag: uid, group_id: newGroup });
+      await studentService.createStudent({ name: newName.trim(), curp: newCurp.trim(), nfc_tag: uid, group_id: teacherGroupId ?? undefined });
           setLinkSuccess(true);
           fetchStudents(); // Reload list
         } catch (dbErr: any) {
@@ -101,7 +105,7 @@ export function StudentListScreen() {
           setTimeout(() => {
             setLinkSuccess(false);
             setSaveError(null);
-            setNewName(''); setNewCurp(''); setNewGroup('1A');
+            setNewName(''); setNewCurp('');
             setIsEnrollModalOpen(false);
           }, 2200);
         }
@@ -341,14 +345,10 @@ export function StudentListScreen() {
                 <input type="text" value={newCurp} onChange={e => setNewCurp(e.target.value.toUpperCase())} placeholder="18 caracteres" maxLength={18}
                   className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono uppercase" />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"><Hash className="w-4 h-4 text-gray-400" /> Grupo Asignado</label>
-                <select value={newGroup} onChange={e => setNewGroup(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                  <option value="1A">1° A</option><option value="1B">1° B</option>
-                  <option value="2A">2° A</option><option value="2B">2° B</option>
-                  <option value="3A">3° A</option><option value="3B">3° B</option>
-                </select>
+              {/* Grupo: mostrar el del docente (no editable) */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-2">
+                <span className="text-blue-600 font-bold text-sm">Grupo asignado:</span>
+                <span className="text-blue-800 font-black text-sm">{teacherGroupName}</span>
               </div>
 
               {saveError && (
