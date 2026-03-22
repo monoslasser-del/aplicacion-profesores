@@ -22,10 +22,11 @@ import {
   Settings,
   Bell,
   ClipboardList,
-  Printer
+  Printer,
+  FileSignature
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { studentService, Student } from '../../services/studentService';
+import { studentService } from '../../services/studentService';
 import { pdfGenerator } from '../../lib/pdfGenerator';
 import { hardwareServices } from '../../utils/hardwareServices';
 
@@ -34,7 +35,7 @@ export function DashboardScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const [recentStudentsDb, setRecentStudentsDb] = useState<Student[]>([]);
+  const [recentStudentsDb, setRecentStudentsDb] = useState<any[]>([]);
   
   // Use a default user for now
   const activeUser = { name: 'Docente', grade: '3° A', role: 'Educador' };
@@ -254,19 +255,50 @@ export function DashboardScreen() {
                 <span className="text-gray-700 font-medium">Lista del Grupo</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left">
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  // Abrir PDF del backend directamente
+                  const token = localStorage.getItem('auth_token');
+                  window.open(`https://tech.ecteam.mx/api/v1/reports/generate?type=trimestral&token=${token}`, '_blank');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left"
+              >
                 <FileText className="w-5 h-5 text-gray-600" />
                 <span className="text-gray-700 font-medium">Ver Reportes</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left">
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowExportModal(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left"
+              >
                 <Download className="w-5 h-5 text-gray-600" />
                 <span className="text-gray-700 font-medium">Exportar PDF</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left">
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/manual-capture');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left"
+              >
                 <Send className="w-5 h-5 text-gray-600" />
-                <span className="text-gray-700 font-medium">Enviar Notificación</span>
+                <span className="text-gray-700 font-medium">Captura Manual</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/planes');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left"
+              >
+                <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                <span className="text-gray-700 font-medium">Planes y Precios</span>
+                <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
             </div>
           </motion.div>
@@ -492,6 +524,15 @@ export function DashboardScreen() {
               <Calendar className="w-5 h-5 text-purple-600" />
             </div>
             <span className="text-gray-700 text-[10px] font-medium text-center">Nuevo Evento</span>
+          </button>
+          <button 
+            onClick={() => navigate('/exam-builder')}
+            className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-gray-50 active:scale-95 transition-all outline-none"
+          >
+            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shadow-inner">
+              <FileSignature className="w-5 h-5 text-indigo-600" />
+            </div>
+            <span className="text-gray-700 text-[10px] font-medium text-center">Generar Examen</span>
           </button>
         </motion.div>
       </div>

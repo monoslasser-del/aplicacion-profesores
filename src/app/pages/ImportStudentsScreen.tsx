@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { 
@@ -9,101 +10,170 @@ import {
   RefreshCcw, 
   ChevronLeft,
   Search,
-  Users
+  Users,
+  Save,
+  Loader,
+  AlertTriangle
 } from 'lucide-react';
 import { hardwareServices } from '../../utils/hardwareServices';
+import { studentService } from '../../services/studentService';
+import { attendanceService } from '../../services/attendanceService';
 
-// --- MOCK DATA FOR NOW ---
-const MOCK_STUDENTS = [
-  { id: '1', nl: 1, name: 'Aguilar Martínez, Carlos', curp: 'AUMC123456...', hasNfc: false, isRepetidor: false },
-  { id: '2', nl: 2, name: 'Bautista Pérez, Sofía', curp: 'BAPS123456...', hasNfc: true, isRepetidor: false },
-  { id: '3', nl: 3, name: 'Cortés Ruiz, Diego', curp: 'CORD123456...', hasNfc: false, isRepetidor: false },
-  { id: '4', nl: 4, name: 'Domínguez Silva, Ana', curp: 'DOSA123456...', hasNfc: false, isRepetidor: false },
-  { id: '5', nl: 5, name: 'Estrada Torres, Luis', curp: 'ESTL123456...', hasNfc: true, isRepetidor: false },
-];
+// Detects column name flexibly
+function findCol(headers: string[], variants: string[]): string | undefined {
+  return headers.find(h => variants.some(v => h.trim().toLowerCase() === v.toLowerCase()));
+}
+
+interface StudentRow { id?: number | string; nl: number; name: string; curp: string; hasNfc: boolean; isRepetidor: boolean; }
 
 export function ImportStudentsScreen() {
   const navigate = useNavigate();
-  const [students, setStudents] = useState(MOCK_STUDENTS);
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [hasFile, setHasFile] = useState(false);
+  const [fileName, setFileName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
   // NFC Modal State
   const [scanningStudent, setScanningStudent] = useState<string | null>(null);
 
-  // Filter logic
-  const filteredStudents = students.filter(s => 
+  // Cargar alumnos existentes del servidor al montar
+  useEffect(() => {
+    studentService.getStudents()
+      .then(data => {
+        setStudents(data.map((s: any, i: number) => ({
+          id: s.id,
+          nl: i + 1,
+          name: s.name,
+          curp: s.curp ?? '',
+          hasNfc: !!s.nfc_tag,
+          isRepetidor: false,
+        })));
+      })
+      .catch(err => console.error('Error cargando alumnos:', err));
+  }, []);
+
+  // Filter
+  const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.nl.toString().includes(searchQuery)
   );
 
-  // File Upload Handlers
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    // TODO: Integrate xlsx parsing here
-    setHasFile(true);
-  };
+  // --- Lectura de Excel con ArrayBuffer (compatible con Chrome/Edge modernos) ---
+  const processFile = useCallback((file: File) => {
+    setFeedback(null);
+    const reader = new FileReader();
+    reader.onerror = () => setFeedback({ ok: false, msg: 'No se pudo leer el archivo.' });
+    reader.onload = (evt) => {
+      try {
+        const buf = evt.target?.result as ArrayBuffer;
+        const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!rows.length) { setFeedback({ ok: false, msg: 'El archivo está vacío.' }); return; }
+        const headers = Object.keys(rows[0]);
+        const nombreKey = findCol(headers, ['Nombre', 'nombre', 'NOMBRE', 'name', 'Name', 'Alumno', 'ALUMNO', 'Nombre Completo']);
+        const curpKey   = findCol(headers, ['CURP', 'curp', 'Curp', 'Clave']);
+        if (!nombreKey) {
+          setFeedback({ ok: false, msg: `Columnas detectadas: ${headers.join(', ')}. Renombra la de nombre a "Nombre".` });
+          return;
+        }
+        const parsed: StudentRow[] = rows
+          .map((r: any, i: number) => ({
+            nl: i + 1,
+            name: r[nombreKey]?.toString().trim() ?? '',
+            curp: curpKey ? r[curpKey]?.toString().trim().toUpperCase() : '',
+            hasNfc: false,
+            isRepetidor: false,
+          }))
+          .filter(r => r.name.length > 0);
+        if (!parsed.length) { setFeedback({ ok: false, msg: 'No se encontraron filas con nombre válido.' }); return; }
+        setStudents(parsed);
+        setHasFile(true);
+        setFileName(file.name);
+        setFeedback({ ok: true, msg: `${parsed.length} alumno(s) leídos del archivo. Revisa y presiona "Guardar Lista".` });
+      } catch (e: any) {
+        setFeedback({ ok: false, msg: `Error al leer el archivo: ${e?.message}` });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }, []);
+
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      // TODO: Integrate xlsx parsing here
-      setHasFile(true);
+    if (e.target.files?.[0]) processFile(e.target.files[0]);
+    e.target.value = '';
+  };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
+  };
+
+  // --- Guardar Lista al servidor ---
+  const handleSaveList = async () => {
+    const toSave = students.filter(s => s.name);
+    if (!toSave.length) return;
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const baseUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) ?? 'https://tech.ecteam.mx/api';
+      const res = await fetch(`${baseUrl}/v1/students/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ students: toSave.map(s => ({ name: s.name, curp: s.curp || null })) }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? `Error ${res.status}`);
+      setFeedback({ ok: true, msg: `✅ ${json.inserted} guardados, ${json.skipped} ya existían.` });
+      // Refrescar con IDs reales
+      const updated = await studentService.getStudents();
+      setStudents(updated.map((s: any, i: number) => ({
+        id: s.id, nl: i + 1, name: s.name, curp: s.curp ?? '', hasNfc: !!s.nfc_tag, isRepetidor: false,
+      })));
+    } catch (e: any) {
+      setFeedback({ ok: false, msg: e.message ?? 'Error al guardar.' });
+    } finally {
+      setSaving(false);
     }
   };
 
   // NFC Binding Flow
-  const startNfcScan = async (studentId: string) => {
-    setScanningStudent(studentId);
-    
+  const startNfcScan = async (studentId: string | number) => {
+    setScanningStudent(String(studentId));
     try {
-      const tagId = await hardwareServices.initNfcListener();
-      
-      if (tagId) {
-        // Success
+      const tagData = await hardwareServices.initNfcListener();
+      if (tagData) {
         await hardwareServices.vibrateSuccess();
-        
-        // Update mock state
-        setStudents(prev => prev.map(s => 
-          s.id === studentId ? { ...s, hasNfc: true } : s
-        ));
+        // Asignar NFC tag en el backend si el alumno tiene ID real
+        const uid = tagData.id
+          ? Array.from(tagData.id as number[]).map((i: number) => i.toString(16).padStart(2, '0')).join(':')
+          : String(Math.random());
+        const student = students.find(s => String(s.id) === String(studentId));
+        if (student?.id) {
+          try { await studentService.assignNfc(student.id, uid); } catch (_) {}
+        }
+        setStudents(prev => prev.map(s => String(s.id) === String(studentId) ? { ...s, hasNfc: true } : s));
         setScanningStudent(null);
       }
     } catch (error: any) {
-      console.warn("NFC Error (Likely web environment):", error);
-      // On the web, it throws "Unimplemented". We catch it and DO NOT close the modal
-      // so the user can use the "Simular ✅" button.
-      if (error?.message?.includes("Unimplemented")) {
-         console.log("Manteniendo modal abierto para simulación en Web.");
-      } else {
-         setScanningStudent(null);
-      }
+      console.warn('NFC Error:', error);
+      if (!error?.message?.includes('Unimplemented')) setScanningStudent(null);
     }
   };
 
-  // MOCK function to dismiss during testing locally on web without Capacitor
   const mockFinishScanWeb = () => {
     if (scanningStudent) {
-      setStudents(prev => prev.map(s => 
-        s.id === scanningStudent ? { ...s, hasNfc: true } : s
-      ));
+      setStudents(prev => prev.map(s => String(s.id) === scanningStudent ? { ...s, hasNfc: true } : s));
       setScanningStudent(null);
     }
   };
 
-  // Toggle Repeater Student
-  const toggleRepeater = (studentId: string) => {
-    setStudents(prev => prev.map(s => 
-      s.id === studentId ? { ...s, isRepetidor: !s.isRepetidor } : s
-    ));
+  const toggleRepeater = (studentId: string | number) => {
+    setStudents(prev => prev.map(s => String(s.id) === String(studentId) ? { ...s, isRepetidor: !s.isRepetidor } : s));
   };
 
   return (
@@ -123,10 +193,38 @@ export function ImportStudentsScreen() {
             <p className="text-xs font-semibold text-slate-400 capitalize">Subir y Vincular Tarjetas</p>
           </div>
         </div>
+        {/* Botón Guardar Lista */}
+        <button
+          onClick={handleSaveList}
+          disabled={saving || students.length === 0}
+          className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-sm transition-all active:scale-95 shadow-md ${
+            saving || students.length === 0
+              ? 'bg-slate-100 text-slate-400 shadow-none'
+              : 'bg-blue-600 text-white shadow-blue-500/30 hover:bg-blue-700'
+          }`}
+        >
+          {saving
+            ? <Loader className="w-4 h-4 animate-spin" />
+            : <Save className="w-4 h-4" />}
+          {saving ? 'Guardando...' : 'Guardar Lista'}
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8">
         
+        {/* Feedback */}
+        {feedback && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+            className={`flex items-start gap-3 px-4 py-3 rounded-2xl text-sm font-semibold ${
+              feedback.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+            }`}
+          >
+            {feedback.ok ? <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" /> : <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />}
+            <span>{feedback.msg}</span>
+          </motion.div>
+        )}
+
         {/* Step 1: Upload Area */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -147,13 +245,13 @@ export function ImportStudentsScreen() {
             <input 
               type="file" 
               className="hidden" 
-              accept=".xlsx,.csv" 
+              accept=".xlsx,.xls,.csv" 
               onChange={handleFileInput}
             />
             {hasFile ? (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex flex-col items-center">
                 <FileSpreadsheet className="w-10 h-10 text-green-500 mb-2" />
-                <p className="text-sm font-bold text-slate-700">Archivo Listo (.xlsx)</p>
+                <p className="text-sm font-bold text-slate-700">{fileName || 'Archivo Listo (.xlsx)'}</p>
                 <p className="text-xs font-semibold text-slate-400 mt-1">Clic para reemplazar</p>
               </motion.div>
             ) : (
@@ -164,11 +262,9 @@ export function ImportStudentsScreen() {
                 <p className="text-sm font-bold text-slate-700">
                   <span className="text-blue-600">Sube un archivo</span> o arrástralo aquí
                 </p>
-                <p className="text-xs font-semibold text-slate-400 mt-1">.xlsx, .csv (Máx. 5MB)</p>
+                <p className="text-xs font-semibold text-slate-400 mt-1">.xlsx, .xls, .csv — columna "Nombre" requerida</p>
               </div>
             )}
-            
-            {/* Background animated blob to make it look active during drag */}
             {isDragging && (
                <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full scale-150 animate-pulse"></div>
             )}
@@ -240,7 +336,7 @@ export function ImportStudentsScreen() {
                         <p className="text-xs text-slate-400 font-medium truncate">{student.curp}</p>
                         {/* Repeater Toggle Badge */}
                         <button 
-                          onClick={() => toggleRepeater(student.id)}
+                          onClick={() => student.id != null && startNfcScan(student.id)}
                           className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md transition-colors ${
                             student.isRepetidor 
                               ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
@@ -261,7 +357,7 @@ export function ImportStudentsScreen() {
                             Vinculado
                           </span>
                           <button 
-                            onClick={() => startNfcScan(student.id)}
+                            onClick={() => student.id != null && startNfcScan(student.id)}
                             className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-blue-600 transition-colors pr-1"
                           >
                             <RefreshCcw className="w-3 h-3" />
@@ -270,7 +366,7 @@ export function ImportStudentsScreen() {
                         </div>
                       ) : (
                         <button 
-                          onClick={() => startNfcScan(student.id)}
+                          onClick={() => student.id != null && startNfcScan(student.id)}
                           className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 rounded-2xl px-4 py-2.5 flex items-center justify-center gap-2 transition-transform active:scale-95"
                         >
                           <Wifi className="w-4 h-4" />

@@ -57,20 +57,42 @@ export const hardwareServices = {
   },
 
   /**
-   * Inicializa el listener base de NFC (Template para reusar)
-   * Devuelve una Promesa que se resuelve con el ID del tag leído.
+   * Inicializa el listener base de NFC.
+   * - Sin callbacks: resuelve una vez con el tagData (modo one-shot).
+   * - Con callbacks: modo continuo; llama onSuccess/onError por cada escaneo.
    */
-  initNfcListener: async (): Promise<any> => {
+  initNfcListener: async (
+    onSuccess?: (tagData: any) => Promise<void>,
+    onError?: (error: any) => Promise<void>
+  ): Promise<any> => {
+    if (onSuccess) {
+      // Modo continuo: escuchar indefinidamente, sin detener tras cada scan
+      try {
+        await CapacitorNfc.startScanning();
+        await CapacitorNfc.addListener('nfcEvent', async (event: any) => {
+          const tagData = event.tag || event;
+          try {
+            await onSuccess(tagData);
+          } catch (err) {
+            if (onError) await onError(err);
+          }
+        });
+      } catch (error) {
+        if (onError) await onError(error);
+        else throw error;
+      }
+      return; // No resuelve promise, escucha indefinidamente
+    }
+
+    // Modo one-shot (comportamiento original)
     return new Promise(async (resolve, reject) => {
       try {
         await CapacitorNfc.startScanning();
         const listener = await CapacitorNfc.addListener('nfcEvent', (event: any) => {
           const tagData = event.tag || event;
-          
-          // Detener tras leer 
+          // Detener tras leer
           CapacitorNfc.stopScanning();
           listener.remove();
-
           resolve(tagData);
         });
       } catch (error) {

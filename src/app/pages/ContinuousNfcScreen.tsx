@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Nfc, CheckCircle2, AlertTriangle, XCircle, Hand, Check, X, ArrowLeft, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
+import { attendanceService } from '../../services/attendanceService';
+import { hardwareServices } from '../../utils/hardwareServices';
 
 interface ScanRecord {
   id: string;
@@ -26,24 +28,63 @@ export function ContinuousNfcScreen() {
 
   const totalStudents = 30;
   const registeredCount = scans.filter(s => s.status === 'success').length;
+  const cleanupRef = useRef<(() => void) | null>(null);
 
-  // Simulate incoming NFC scans
+  // Iniciar escaner NFC real al montar el componente
   useEffect(() => {
     if (!isScanning) return;
 
-    const timer = setInterval(() => {
-      const mockScans: ScanRecord[] = [
-        { id: Math.random().toString(), name: 'Sofía Álvarez Gómez', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'success' },
-        { id: Math.random().toString(), name: 'Mateo López Ruiz', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'success' },
-        { id: Math.random().toString(), name: 'Ricardo Hernández Rivera', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'warning', message: 'Ya registrado' },
-        { id: Math.random().toString(), name: 'Desconocido', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), status: 'error', message: 'Tarjeta no válida' },
-      ];
+    let active = true;
 
-      const newScan = mockScans[Math.floor(Math.random() * mockScans.length)];
-      setScans(prev => [newScan, ...prev]);
-    }, 4000);
+    const startNfc = async () => {
+      try {
+        await hardwareServices.initNfcListener(
+          async (tagData: any) => {
+            if (!active) return;
+            // Extraer UID de la tarjeta
+            const uid = tagData.id
+              ? Array.from(tagData.id as number[]).map((i: number) => i.toString(16).padStart(2, '0')).join(':')
+              : 'unknown';
 
-    return () => clearInterval(timer);
+            try {
+              // Registrar asistencia en el backend
+              const res = await attendanceService.scanNfc(uid);
+              await hardwareServices.vibrateSuccess();
+              setScans(prev => [{
+                id: Math.random().toString(),
+                name: res.student_name,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'success',
+              }, ...prev.slice(0, 49)]);
+            } catch (err: any) {
+              await hardwareServices.vibrateError();
+              const isDouble = err?.message?.toLowerCase().includes('ya registrado');
+              setScans(prev => [{
+                id: Math.random().toString(),
+                name: isDouble ? 'Alumno' : 'Tarjeta desconocida',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: isDouble ? 'warning' : 'error',
+                message: isDouble ? 'Ya registrado hoy' : 'Tarjeta no válida o no asignada',
+              }, ...prev.slice(0, 49)]);
+            }
+          },
+          async (error: any) => {
+            if (!active) return;
+            await hardwareServices.vibrateError();
+            console.error('NFC error:', error);
+          }
+        );
+      } catch (_) {
+        // Si el hardware NFC no está disponible (navegador/web), no hacer nada
+        console.info('Hardware NFC no disponible en este dispositivo.');
+      }
+    };
+
+    startNfc();
+
+    return () => {
+      active = false;
+    };
   }, [isScanning]);
 
   return (

@@ -7,8 +7,8 @@ import { googleAuthService } from '../../services/googleAuthService';
 
 export function LoginScreen() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('director@escuela.com');
-  const [password, setPassword] = useState('admin');
+  const [email, setEmail] = useState('admin@appmaestri.com');
+  const [password, setPassword] = useState('password123');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);

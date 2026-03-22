@@ -1,36 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Save, MessageSquare, Check, X, Search } from 'lucide-react';
+import { ArrowLeft, Save, MessageSquare, Check, X, Search, Loader } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
+import { studentService } from '../../services/studentService';
+import { attendanceService } from '../../services/attendanceService';
 
 export function ManualCaptureScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [saving, setSaving] = useState(false);
   
   const state = location.state || {};
   const activityType = state.activityType || 'registro';
-  const activityName = state.activityName || 'Lectura de comprensión';
+  const activityName = state.activityName || 'Lectura de compresión';
   const campoName = state.campoName || 'Lenguajes';
 
-  
-  const [students, setStudents] = useState([
-    { id: '1', listNumber: 1, name: 'Isabela Martínez Solano', grade: '', status: null, notes: '' },
-    { id: '2', listNumber: 2, name: 'Ricardo Hernández Rivera', grade: '', status: null, notes: '' },
-    { id: '3', listNumber: 3, name: 'Valeria Santos López', grade: '', status: null, notes: '' },
-    { id: '4', listNumber: 4, name: 'Mateo López Ruiz', grade: '', status: null, notes: '' },
-    { id: '5', listNumber: 5, name: 'Sofía Álvarez Gómez', grade: '', status: null, notes: '' },
-  ]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleStatusChange = (id: string, status: any) => {
+  // Cargar alumnos reales del backend
+  useEffect(() => {
+    studentService.getStudents()
+      .then(data => {
+        setStudents(data.map((s: any, idx: number) => ({
+          id: s.id,
+          listNumber: idx + 1,
+          name: s.name,
+          grade: '',
+          status: null,
+          notes: ''
+        })));
+      })
+      .catch(err => console.error('Error cargando alumnos:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleStatusChange = (id: any, status: any) => {
     setStudents(prev => prev.map(s => s.id === id ? { ...s, status } : s));
   };
 
-  const handleGradeChange = (id: string, grade: string) => {
+  const handleGradeChange = (id: any, grade: string) => {
     setStudents(prev => prev.map(s => s.id === id ? { ...s, grade } : s));
   };
 
   const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  // Guardar registros en el backend
+  const handleSave = async () => {
+    setSaving(true);
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      for (const student of students) {
+        let backendStatus: 'present' | 'absent' | 'late' = 'present';
+        if (activityType === 'registro') {
+          backendStatus = student.status === 'yes' ? 'present' : student.status === 'no' ? 'absent' : 'present';
+        } else {
+          backendStatus = 'present'; // Actividad calificada = presencia implícita
+        }
+        await attendanceService.markManual({
+          student_id: student.id,
+          date: today,
+          status: backendStatus,
+        });
+      }
+      navigate('/activities');
+    } catch (err) {
+      console.error('Error guardando:', err);
+      alert('Hubo un error al guardar. Verifica la conexión con el servidor.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden">
@@ -156,11 +197,12 @@ export function ManualCaptureScreen() {
       {/* Floating Action Button */}
       <div className="absolute bottom-6 left-0 right-0 px-6 z-20 pb-4">
         <button 
-          onClick={() => navigate('/activities')}
-          className="w-full bg-gray-900 hover:bg-black text-white font-bold text-lg py-4 rounded-2xl transition-colors active:scale-95 shadow-xl flex items-center justify-center gap-2"
+          onClick={handleSave}
+          disabled={saving || loading}
+          className="w-full bg-gray-900 hover:bg-black text-white font-bold text-lg py-4 rounded-2xl transition-colors active:scale-95 shadow-xl flex items-center justify-center gap-2 disabled:opacity-60"
         >
-          <Save className="w-5 h-5" />
-          Guardar y Finalizar
+          {saving ? <Loader className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          {saving ? 'Guardando...' : 'Guardar y Finalizar'}
         </button>
       </div>
     </div>
