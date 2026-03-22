@@ -67,6 +67,7 @@ export function CaptureView() {
 
   // QUICK GRADE MODAL STATE
   const [activeNfcStudent, setActiveNfcStudent] = useState<any | null>(null);
+  const [gradingMode, setGradingMode] = useState<'nfc' | 'manual' | null>(null);
 
   // --- Híbrido: NFC Background Listener ---
   useEffect(() => {
@@ -84,6 +85,7 @@ export function CaptureView() {
             await hardwareServices.vibrateSuccess();
             // En vez de evaluar automáticamente, disparamos el modal interactivo
             // y mantenemos el NFC activo
+            setGradingMode('nfc');
             setActiveNfcStudent(currentStudents[stuIndex]);
           } else {
              await hardwareServices.vibrateError();
@@ -116,8 +118,20 @@ export function CaptureView() {
       return copy;
     });
 
-    // 2. Cierra modal instantáneo para seguir flujo cero-fricción
-    setActiveNfcStudent(null);
+    // 2. Cierra modal instantáneo para seguir flujo cero-fricción o avanza si es manual
+    if (gradingMode === 'manual') {
+      const copyStudents = studentsRef.current;
+      const idx = copyStudents.findIndex(s => s.id === student.id);
+      if (idx !== -1 && idx < copyStudents.length - 1) {
+        setActiveNfcStudent(copyStudents[idx + 1]);
+      } else {
+        setActiveNfcStudent(null);
+        setGradingMode(null);
+      }
+    } else {
+      setActiveNfcStudent(null);
+      setGradingMode(null);
+    }
     await hardwareServices.vibrateSuccess(); // Doble retroalimentación al confirmar
 
     // 3. Enviar a backend silenciosamente en background
@@ -145,16 +159,9 @@ export function CaptureView() {
     }
   };
 
-  const handleStatusChange = (id: any, status: any) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, status } : s));
-  };
-  
-  const handleLevelChange = (id: any, level: string) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, level } : s));
-  };
-
-  const handleGradeChange = (id: any, grade: string) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, grade } : s));
+  const startManualGrading = (student: any) => {
+    setGradingMode('manual');
+    setActiveNfcStudent(student);
   };
 
   const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -220,15 +227,6 @@ export function CaptureView() {
 
         {/* Info Banner & NFC Toggle */}
         <div className="flex flex-col gap-3 mb-4">
-          <div className="bg-blue-50 rounded-xl p-3 flex justify-between items-center border border-blue-100">
-            <div className="flex gap-4 text-sm font-bold text-blue-800">
-              <span>{campoName}</span>
-            </div>
-            <span className="bg-white text-blue-700 px-2.5 py-1 rounded-lg text-xs font-black shadow-sm uppercase">
-              {activityType === 'calificada' ? (evaluationScale === 'numeric' ? 'Numérica' : 'Niveles') : 'Registro'}
-            </span>
-          </div>
-          
           <button 
             onClick={() => setIsNfcActive(!isNfcActive)}
             className={`w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all ${
@@ -261,7 +259,7 @@ export function CaptureView() {
       </div>
 
       {/* Student List */}
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 overflow-y-auto pb-[120px]">
         <div className="divide-y divide-gray-100">
           {filteredStudents.map((student) => (
             <motion.div
@@ -280,49 +278,26 @@ export function CaptureView() {
               </div>
 
               <div className="w-32 flex justify-center shrink-0">
-                {activityType === 'calificada' ? (
-                  evaluationScale === 'numeric' ? (
-                    <input 
-                      type="number" 
-                      min="5" max="10" step="0.1"
-                      placeholder="-"
-                      value={student.grade}
-                      onChange={(e) => handleGradeChange(student.id, e.target.value)}
-                      className="w-16 h-10 text-center font-black text-lg text-blue-800 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                    />
+                <button 
+                  onClick={() => startManualGrading(student)}
+                  className={`w-full h-10 rounded-xl font-bold flex items-center justify-center transition-all ${
+                    student.grade || student.level || student.status
+                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-200'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {activityType === 'calificada' ? (
+                    evaluationScale === 'numeric' ? (
+                      student.grade || 'Evaluar'
+                    ) : (
+                      student.level || 'Evaluar'
+                    )
                   ) : (
-                    <select
-                      value={student.level || ''}
-                      onChange={(e) => handleLevelChange(student.id, e.target.value)}
-                      className="w-full h-10 text-[10px] font-bold uppercase bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                    >
-                      <option value="">(Selección)</option>
-                      <option value="Sobresaliente">Sobresaliente</option>
-                      <option value="Satisfactorio">Satisfactorio</option>
-                      <option value="Suficiente">Suficiente</option>
-                      <option value="En Proceso">En Proceso</option>
-                    </select>
-                  )
-                ) : activityType === 'participacion' || activityType === 'registro' ? (
-                  <div className="flex gap-1.5">
-                    <button 
-                      onClick={() => handleStatusChange(student.id, 'yes')}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                        student.status === 'yes' ? 'bg-green-500 text-white shadow-md shadow-green-200 scale-105' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                    >
-                      <Check className="w-5 h-5" />
-                    </button>
-                    <button 
-                      onClick={() => handleStatusChange(student.id, 'no')}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                        student.status === 'no' ? 'bg-red-500 text-white shadow-md shadow-red-200 scale-105' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                ) : null}
+                    student.status === 'yes' ? <><Check className="w-4 h-4 mr-1" /> Listo</> : (
+                      student.status === 'no' ? <><X className="w-4 h-4 mr-1" /> No</> : 'Evaluar'
+                    )
+                  )}
+                </button>
               </div>
             </motion.div>
           ))}
@@ -349,7 +324,10 @@ export function CaptureView() {
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
-              onClick={() => setActiveNfcStudent(null)}
+              onClick={() => {
+                setActiveNfcStudent(null);
+                setGradingMode(null);
+              }}
               className="absolute inset-0 bg-slate-900/60 z-40 backdrop-blur-sm"
             />
             <motion.div 
