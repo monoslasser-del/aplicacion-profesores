@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { activityService } from '../../services/activityService';
+import { authService } from '../../services/authService';
 
 // Tipos de datos mock
 type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
@@ -46,27 +47,42 @@ export function ActivitiesScreen() {
   const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
   const Icon = currentCampo.icon;
 
-  // Mock Students & Progress
-  const students = [
-    { listNumber: 1, name: 'Isabela Martínez Solano', totalAct: 12, graded: 10, pending: 2, avg: 9.2, status: 'good' },
-    { listNumber: 2, name: 'Valeria Santos López', totalAct: 12, graded: 6, pending: 6, avg: 7.5, status: 'warning' },
-    { listNumber: 3, name: 'Tuliana Rey Gómez', totalAct: 12, graded: 11, pending: 1, avg: 8.8, status: 'good' },
-    { listNumber: 4, name: 'Mariña Lierio Boscolaz', totalAct: 12, graded: 4, pending: 8, avg: 6.5, status: 'danger' },
-    { listNumber: 5, name: 'Ennilia Damienjrm Veríbe', totalAct: 12, graded: 9, pending: 3, avg: 8.0, status: 'warning' },
-    { listNumber: 6, name: 'Daniela Ruane Latúnez', totalAct: 12, graded: 12, pending: 0, avg: 9.5, status: 'good' },
-    { listNumber: 7, name: 'Sebastián Ventèz Latúnez', totalAct: 12, graded: 5, pending: 7, avg: 6.0, status: 'danger' },
-    { listNumber: 8, name: 'Sebastián Lieti Perez', totalAct: 12, graded: 8, pending: 4, avg: 7.2, status: 'warning' },
-    { listNumber: 9, name: 'Eleazar Dannejen Veríbe', totalAct: 12, graded: 10, pending: 2, avg: 8.5, status: 'good' },
-    { listNumber: 10, name: 'Dáña Ratáel Camerń', totalAct: 12, graded: 11, pending: 1, avg: 9.0, status: 'good' },
-  ];
+  // State for Real Data
+  const [students, setStudents] = useState<any[]>([]);
+  const [dbActivities, setDbActivities] = useState<any[]>([]);
 
-  // Mock Structure for Table Data
-  const daysColumns = [
-    { name: 'Lunes', actividades: [{ id: 'A1', label: 'A' }, { id: 'A2', label: '2' }] },
-    { name: 'Martes', actividades: [{ id: 'A3', label: '3' }, { id: 'A4', label: '4' }] },
-    { name: 'Miercoles', actividades: [{ id: 'A5', label: '5' }, { id: 'A6', label: '6' }] },
-    { name: 'Jueves', actividades: [{ id: 'A7', label: '7' }, { id: 'A8', label: '8' }] },
-    { name: 'Viernes', actividades: [{ id: 'A9', label: '9' }, { id: 'A10', label: '10' }] }
+  // Fetch from DB
+  React.useEffect(() => {
+    import('../../services/studentService').then(({ studentService }) => {
+      studentService.getStudents().then(data => {
+        setStudents(data.map((s, index) => ({
+          listNumber: index + 1,
+          name: s.name,
+          totalAct: 12,
+          graded: 10,
+          pending: 2,
+          avg: 9.0,
+          status: 'good'
+        })));
+      });
+    });
+
+    activityService.getActivities().then(data => {
+      setDbActivities(data);
+    });
+  }, []);
+
+  // Filter activities by active Campo
+  const filteredActivities = dbActivities.filter(a => a.subject === activeCampo);
+  
+  // Group activities dynamically for the table header
+  const daysColumns = filteredActivities.length > 0 ? [
+    { 
+      name: 'Actividades NEM', 
+      actividades: filteredActivities.map(a => ({ id: String(a.id), label: a.title.substring(0, 10) })) 
+    }
+  ] : [
+    { name: 'Sin Actividades', actividades: [{ id: '-', label: 'N/A' }] }
   ];
 
   // Random Data Generator Helper
@@ -113,13 +129,14 @@ export function ActivitiesScreen() {
     if (!activityName.trim()) return;
 
     try {
-      // Create the activity in the remote database (group_id hardcoded / backend resolves or it requires it)
-      // Since group_id is required we default to 1, usually we'd pass active user's group.
+      const storedUser = authService.getStoredUser();
+      const teacherGroupId = storedUser?.group_info?.id;
+      
       const response = await activityService.createActivity({
         title: activityName.trim(),
         subject: currentCampo.id,
         due_date: new Date().toISOString().split('T')[0],
-        group_id: 1 // Default group_id pending auth user's actual group parsing
+        group_id: teacherGroupId
       });
 
       // Navigate to the manual capture view of the new activity
