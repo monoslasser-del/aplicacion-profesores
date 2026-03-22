@@ -8,6 +8,7 @@ import {
   EDUCATIONAL_LEVELS, GRADES_BY_LEVEL, GROUPS,
   type EducationalLevel, type GroupLetter
 } from '../../constants/education';
+import { ESTADOS, getMunicipios } from '../../constants/mexico';
 
 // ── Shared select style ───────────────────────────────────────────────────────
 const selectCls = "w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-8 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
@@ -56,6 +57,15 @@ export function RegisterScreen() {
   const [estado,          setEstado]          = useState('');
   const [municipio,       setMunicipio]       = useState('');
 
+  // Lista de municipios según el estado seleccionado
+  const municipiosList = getMunicipios(estado);
+
+  // Al cambiar estado, resetear municipio
+  const handleEstadoChange = (v: string) => {
+    setEstado(v);
+    setMunicipio('');
+  };
+
   // Perfil educativo NEM
   const [level, setLevel] = useState<EducationalLevel | ''>('');
   const [grade, setGrade] = useState<string>('');
@@ -94,10 +104,8 @@ export function RegisterScreen() {
         estado,
         municipio,
         level:          level as EducationalLevel,
-        grade:          Number(grade),
+        grade:          grade,
         group:          group as GroupLetter,
-        // legacy: construir grado_asignado para compatibilidad con el servidor antiguo
-        grado_asignado: `${grade}° ${level}`,
         nivel_educativo: level as EducationalLevel,
       });
       navigate('/planes');
@@ -204,24 +212,21 @@ export function RegisterScreen() {
               </div>
             </div>
 
-            {/* Estado & Municipio */}
+            {/* Estado & Municipio — Selects dinámicos */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 group">
-                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Estado</label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2"><MapPin className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" /></div>
-                  <input type="text" required value={estado} onChange={e => setEstado(e.target.value)} placeholder="Ej. Jalisco"
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none" />
-                </div>
-              </div>
-              <div className="space-y-1.5 group">
-                <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1">Municipio</label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2"><MapPin className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" /></div>
-                  <input type="text" required value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="Ej. Zapopan"
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border-2 border-slate-200/80 rounded-xl pl-10 pr-3 py-3 font-semibold text-[15px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/10 transition-all outline-none" />
-                </div>
-              </div>
+              <SelectField label="Estado" icon={MapPin} value={estado} onChange={handleEstadoChange}>
+                <option value="" disabled>Selecciona estado…</option>
+                {ESTADOS.map(e => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </SelectField>
+
+              <SelectField label="Municipio" icon={MapPin} value={municipio} onChange={setMunicipio} disabled={!estado}>
+                <option value="" disabled>{estado ? 'Selecciona municipio…' : 'Primero elige estado'}</option>
+                {municipiosList.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </SelectField>
             </div>
 
             {/* ── Perfil Educativo NEM ── */}
