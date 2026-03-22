@@ -43,6 +43,7 @@ export function ActivitiesScreen() {
   // New Activity State
   const [activityName, setActivityName] = useState('');
   const [activityType, setActivityType] = useState('registro'); // 'registro', 'participacion', 'calificada'
+  const [evaluationScale, setEvaluationScale] = useState<'numeric' | 'levels'>('numeric');
 
   const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
   const Icon = currentCampo.icon;
@@ -136,7 +137,8 @@ export function ActivitiesScreen() {
         title: activityName.trim(),
         subject: currentCampo.id,
         due_date: new Date().toISOString().split('T')[0],
-        group_id: teacherGroupId
+        group_id: teacherGroupId,
+        evaluation_scale: evaluationScale
       });
 
       // Navigate to the manual capture view of the new activity
@@ -147,7 +149,8 @@ export function ActivitiesScreen() {
           activityName: activityName.trim(),
           campoName: currentCampo.name,
           campoColor: currentCampo.color,
-          activityType: activityType
+          activityType: activityType,
+          evaluationScale: evaluationScale
         }
       });
       
@@ -517,6 +520,26 @@ export function ActivitiesScreen() {
                       className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activityType === 'calificada' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
                     >
                       Calificada
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Evaluación (OBLIGATORIO)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      onClick={() => setEvaluationScale('numeric')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${evaluationScale === 'numeric' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <span className="font-bold text-sm">Numérica</span>
+                      <span className="text-[10px] mt-1 opacity-80">(del 5 al 10)</span>
+                    </button>
+                    <button 
+                      onClick={() => setEvaluationScale('levels')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${evaluationScale === 'levels' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <span className="font-bold text-sm">Niveles de Desarrollo</span>
+                      <span className="text-[10px] mt-1 opacity-80">(formativo)</span>
                     </button>
                   </div>
                 </div>

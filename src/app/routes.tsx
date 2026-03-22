@@ -8,7 +8,6 @@ import { StudentAttendanceScreen } from "./pages/students/StudentAttendanceScree
 import { StudentWorksScreen } from "./pages/students/StudentWorksScreen";
 import { ActivitiesScreen } from "./pages/ActivitiesScreen";
 import { StudentListScreen } from "./pages/StudentListScreen";
-import { ContinuousNfcScreen } from "./pages/ContinuousNfcScreen";
 import { ManualCaptureScreen } from "./pages/ManualCaptureScreen";
 import { EvaluationCaptureScreen } from "./pages/EvaluationCaptureScreen";
 import { WelcomeScreen } from "./pages/WelcomeScreen";
@@ -32,7 +31,6 @@ export const router = createHashRouter([
       { path: "login", element: <LoginScreen /> },
       { path: "register", element: <RegisterScreen /> },
       { path: "planes", element: <PricingScreen /> },
-      { path: "capture", element: <ContinuousNfcScreen /> },
       { path: "manual-capture", element: <ManualCaptureScreen /> },
       { path: "evaluation-capture", element: <EvaluationCaptureScreen /> },
       { path: "import-students", element: <ImportStudentsScreen /> },
