@@ -124,7 +124,7 @@ export function ImportStudentsScreen() {
       const res = await fetch(`${baseUrl}/v1/students/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ students: toSave.map(s => ({ name: s.name, curp: s.curp || null })) }),
+        body: JSON.stringify({ students: toSave.map(s => ({ name: s.name, curp: s.curp || null, is_repetidor: s.isRepetidor })) }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? `Error ${res.status}`);
@@ -334,16 +334,17 @@ export function ImportStudentsScreen() {
                       <p className="font-bold text-slate-800 text-sm truncate">{student.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-xs text-slate-400 font-medium truncate">{student.curp}</p>
-                        {/* Repeater Toggle Badge */}
+                        {/* Repeater Toggle Badge — toca para cambiar estado */}
                         <button 
-                          onClick={() => student.id != null && startNfcScan(student.id)}
-                          className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md transition-colors ${
+                          onClick={() => toggleRepeater(student.id ?? student.nl)}
+                          title="Toca para cambiar: Nuevo Ingreso o Repetidor"
+                          className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-lg transition-all active:scale-95 border-2 ${
                             student.isRepetidor 
-                              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
-                              : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-400' 
+                              : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-300'
                           }`}
                         >
-                          {student.isRepetidor ? 'Repetidor' : 'N. Ingreso'}
+                          {student.isRepetidor ? '↩ Repetidor' : '✦ N. Ingreso'}
                         </button>
                       </div>
                     </div>
