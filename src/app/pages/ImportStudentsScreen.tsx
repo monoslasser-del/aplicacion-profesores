@@ -316,12 +316,12 @@ export function ImportStudentsScreen() {
             {/* List Body */}
             <div className="divide-y divide-slate-100/80">
               {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
+                filteredStudents.map((student, idx) => (
                   <motion.div 
                     layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    key={student.id} 
+                    key={student.id ?? `nl-${student.nl}-${idx}`}
                     className="grid grid-cols-[3rem_1fr_auto] items-center gap-2 p-4 transition-colors hover:bg-slate-50/50"
                   >
                     {/* NL */}
