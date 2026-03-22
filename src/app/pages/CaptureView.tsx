@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Save, MessageSquare, Check, X, Search, Loader, Nfc, RadioReceiver } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { studentService } from '../../services/studentService';
@@ -65,6 +65,9 @@ export function CaptureView() {
       .finally(() => setLoading(false));
   }, []);
 
+  // QUICK GRADE MODAL STATE
+  const [activeNfcStudent, setActiveNfcStudent] = useState<any | null>(null);
+
   // --- Híbrido: NFC Background Listener ---
   useEffect(() => {
     let active = true;
@@ -79,20 +82,9 @@ export function CaptureView() {
           
           if (stuIndex !== -1) {
             await hardwareServices.vibrateSuccess();
-            // Marcar alumno según escala seleccionada (evaluación rápida)
-            setStudents(prev => {
-              const copy = [...prev];
-              if (activityType === 'calificada') {
-                if (evaluationScale === 'numeric') {
-                  copy[stuIndex] = { ...copy[stuIndex], grade: '10' };
-                } else {
-                  copy[stuIndex] = { ...copy[stuIndex], level: 'Sobresaliente' };
-                }
-              } else {
-                copy[stuIndex] = { ...copy[stuIndex], status: 'yes' };
-              }
-              return copy;
-            });
+            // En vez de evaluar automáticamente, disparamos el modal interactivo
+            // y mantenemos el NFC activo
+            setActiveNfcStudent(currentStudents[stuIndex]);
           } else {
              await hardwareServices.vibrateError();
           }
@@ -105,6 +97,53 @@ export function CaptureView() {
     }
     return () => { active = false; };
   }, [isNfcActive, evaluationScale, activityType]);
+
+  const handleQuickGrade = async (student: any, gradeValue: string | null, levelValue: string | null, statusValue: string | null) => {
+    if (!activityId) return;
+    
+    // 1. Update local state visual
+    setStudents(prev => {
+      const copy = [...prev];
+      const idx = copy.findIndex(s => s.id === student.id);
+      if (idx !== -1) {
+        if (activityType === 'calificada') {
+          if (evaluationScale === 'numeric' && gradeValue) copy[idx] = { ...copy[idx], grade: gradeValue };
+          if (evaluationScale === 'levels' && levelValue) copy[idx] = { ...copy[idx], level: levelValue };
+        } else {
+          if (statusValue) copy[idx] = { ...copy[idx], status: statusValue };
+        }
+      }
+      return copy;
+    });
+
+    // 2. Cierra modal instantáneo para seguir flujo cero-fricción
+    setActiveNfcStudent(null);
+    await hardwareServices.vibrateSuccess(); // Doble retroalimentación al confirmar
+
+    // 3. Enviar a backend silenciosamente en background
+    try {
+      let scoreVal = null;
+      let scoreText = null;
+
+      if (activityType === 'calificada') {
+        if (evaluationScale === 'numeric') {
+          scoreVal = gradeValue ? parseFloat(gradeValue) : null;
+        } else {
+          scoreText = levelValue || null;
+        }
+      } else {
+        scoreText = statusValue === 'yes' ? 'Completado' : (statusValue === 'no' ? 'Pendiente' : null);
+      }
+
+      await activityService.submitGrades(activityId, [{
+        student_id: student.id,
+        score: scoreVal,
+        score_text: scoreText
+      }]);
+    } catch (err) {
+      console.error('NFC QuickGrade Error:', err);
+    }
+  };
 
   const handleStatusChange = (id: any, status: any) => {
     setStudents(prev => prev.map(s => s.id === id ? { ...s, status } : s));
@@ -301,6 +340,88 @@ export function CaptureView() {
           {saving ? 'Guardando en la Nube...' : 'Guardar y Finalizar'}
         </button>
       </div>
+
+      {/* QUICK GRADE MODAL */}
+      <AnimatePresence>
+        {activeNfcStudent && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveNfcStudent(null)}
+              className="absolute inset-0 bg-slate-900/60 z-40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }} 
+              animate={{ y: 0 }} 
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] z-50 overflow-hidden shadow-2xl pb-8"
+            >
+              <div className="px-6 pt-8 pb-4">
+                <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+                <div className="flex flex-col mb-6">
+                  <span className="text-slate-500 text-sm font-bold uppercase tracking-widest">Evaluando a</span>
+                  <h2 className="text-2xl font-black text-slate-900">{activeNfcStudent.name}</h2>
+                </div>
+                
+                {activityType === 'calificada' ? (
+                  evaluationScale === 'levels' ? (
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={() => handleQuickGrade(activeNfcStudent, null, 'Logrado', null)}
+                        className="w-full py-4 px-6 rounded-2xl bg-green-50 text-green-700 font-bold border-2 border-green-200 active:scale-95 transition-all text-lg"
+                      >
+                        Logrado
+                      </button>
+                      <button 
+                        onClick={() => handleQuickGrade(activeNfcStudent, null, 'En Proceso', null)}
+                        className="w-full py-4 px-6 rounded-2xl bg-yellow-50 text-yellow-700 font-bold border-2 border-yellow-200 active:scale-95 transition-all text-lg"
+                      >
+                        En Proceso
+                      </button>
+                      <button 
+                        onClick={() => handleQuickGrade(activeNfcStudent, null, 'Requiere Apoyo', null)}
+                        className="w-full py-4 px-6 rounded-2xl bg-red-50 text-red-700 font-bold border-2 border-red-200 active:scale-95 transition-all text-lg"
+                      >
+                        Requiere Apoyo
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3">
+                      {[5, 6, 7, 8, 9, 10].map(grade => (
+                        <button 
+                          key={grade}
+                          onClick={() => handleQuickGrade(activeNfcStudent, grade.toString(), null, null)}
+                          className="py-5 rounded-2xl bg-blue-50 text-blue-700 font-black text-2xl border-2 border-blue-200 active:scale-95 transition-all"
+                        >
+                          {grade}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => handleQuickGrade(activeNfcStudent, null, null, 'yes')}
+                      className="py-5 rounded-2xl bg-green-50 text-green-700 font-black text-xl border-2 border-green-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-6 h-6" /> Listo
+                    </button>
+                    <button 
+                      onClick={() => handleQuickGrade(activeNfcStudent, null, null, 'no')}
+                      className="py-5 rounded-2xl bg-red-50 text-red-700 font-black text-xl border-2 border-red-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <X className="w-6 h-6" /> Pendiente
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
