@@ -9,6 +9,7 @@ export interface Activity {
   group_id?: number | string;
   evaluation_scale?: 'numeric' | 'levels';
   type?: 'registro' | 'participacion' | 'calificada';
+  is_active?: boolean;
 }
 
 export interface Grade {

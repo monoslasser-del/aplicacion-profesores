@@ -221,7 +221,14 @@ export function CaptureView() {
         await activityService.submitGrades(activityId, gradesToSubmit);
       }
       
-      navigate('/activities');
+      // Desactivar la actividad para que no vuelva a aparecer en Captura Híbrida
+      await activityService.updateActivity(activityId, { is_active: false });
+
+      // Opcional: limpiar estado interno por si vuelven mediante navegación pop
+      setActivityId(null);
+      setActivityName('Ninguna actividad en la clase');
+
+      navigate('/records');
     } catch (err) {
       console.error('Error guardando:', err);
       alert('Hubo un error al guardar. Verifica la conexión con el servidor.');
