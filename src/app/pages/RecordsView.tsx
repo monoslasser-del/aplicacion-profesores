@@ -34,16 +34,10 @@ export function RecordsView() {
   const navigate = useNavigate();
   const [activeCampo, setActiveCampo] = useState('lenguajes');
   const [viewMode, setViewMode] = useState<'resumen' | 'detalle'>('detalle'); // Default to detalle para mostrar la nueva vista
-  const [showNewModal, setShowNewModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Estado para el popover de la celda
   const [selectedCell, setSelectedCell] = useState<{ studentId: number, activityId: string, rect: DOMRect, details: ActivityDetails } | null>(null);
-
-  // New Activity State
-  const [activityName, setActivityName] = useState('');
-  const [activityType, setActivityType] = useState('registro'); // 'registro', 'participacion', 'calificada'
-  const [evaluationScale, setEvaluationScale] = useState<'numeric' | 'levels'>('numeric');
 
   const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
   const Icon = currentCampo.icon;
@@ -126,41 +120,6 @@ export function RecordsView() {
     return <span className="font-bold text-sm text-gray-700">{status}</span>;
   };
 
-  const handleCreateAndCapture = async () => {
-    if (!activityName.trim()) return;
-
-    try {
-      const storedUser = authService.getStoredUser();
-      const teacherGroupId = storedUser?.group_info?.id;
-      
-      const response = await activityService.createActivity({
-        title: activityName.trim(),
-        subject: currentCampo.id,
-        due_date: new Date().toISOString().split('T')[0],
-        group_id: teacherGroupId,
-        evaluation_scale: evaluationScale
-      });
-
-      // Navigate to the manual capture view of the new activity
-      // with its newly created ID
-      navigate('/manual-capture', {
-        state: {
-          activityId: response.id,
-          activityName: activityName.trim(),
-          campoName: currentCampo.name,
-          campoColor: currentCampo.color,
-          activityType: activityType,
-          evaluationScale: evaluationScale
-        }
-      });
-      
-      setShowNewModal(false);
-    } catch (error) {
-      console.error("Error creating activity", error);
-      alert("Hubo un error al guardar la actividad en la nube.");
-    }
-  };
-
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden z-0">
       {/* Header Concentrado */}
@@ -212,12 +171,6 @@ export function RecordsView() {
         </div>
         <button className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200">
           <Filter className="w-5 h-5" />
-        </button>
-        <button 
-          onClick={() => setShowNewModal(true)}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center text-white active:scale-95 shadow-sm transition-colors ${currentCampo.color}`}
-        >
-          <Plus className="w-5 h-5" />
         </button>
       </div>
 
@@ -448,119 +401,6 @@ export function RecordsView() {
           </div>
         )}
       </div>
-
-      {/* Modal "Nueva Actividad" */}
-      <AnimatePresence>
-        {showNewModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowNewModal(false)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl z-50 overflow-hidden shadow-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col"
-            >
-              <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
-                <h2 className="text-xl font-bold text-gray-900">Nueva Actividad</h2>
-                <button 
-                  onClick={() => setShowNewModal(false)}
-                  className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-white">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Nombre de la actividad</label>
-                  <input 
-                    type="text" 
-                    value={activityName}
-                    onChange={(e) => setActivityName(e.target.value)}
-                    placeholder="Ej. Lectura de comprensión" 
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Campo Formativo</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {CAMPOS.map(c => (
-                      <button 
-                        key={c.id} 
-                        onClick={() => setActiveCampo(c.id)}
-                        className={`flex items-center gap-2 p-3 rounded-xl border transition-all ${activeCampo === c.id ? `border-${c.color.split('-')[1]}-500 ${c.lightColor} ${c.textColor}` : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
-                        <c.icon className="w-4 h-4" />
-                        <span className="text-xs font-bold">{c.name.split(' ')[0]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Registro</label>
-                  <div className="flex bg-gray-100 p-1 rounded-xl">
-                    <button 
-                      onClick={() => setActivityType('registro')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activityType === 'registro' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
-                    >
-                      Solo registro
-                    </button>
-                    <button 
-                      onClick={() => setActivityType('participacion')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activityType === 'participacion' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
-                    >
-                      Participación
-                    </button>
-                    <button 
-                      onClick={() => setActivityType('calificada')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activityType === 'calificada' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
-                    >
-                      Calificada
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Evaluación (OBLIGATORIO)</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button 
-                      onClick={() => setEvaluationScale('numeric')}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${evaluationScale === 'numeric' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      <span className="font-bold text-sm">Numérica</span>
-                      <span className="text-[10px] mt-1 opacity-80">(del 5 al 10)</span>
-                    </button>
-                    <button 
-                      onClick={() => setEvaluationScale('levels')}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${evaluationScale === 'levels' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      <span className="font-bold text-sm">Niveles de Desarrollo</span>
-                      <span className="text-[10px] mt-1 opacity-80">(formativo)</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 bg-white border-t border-gray-100 shrink-0">
-                <button 
-                  onClick={handleCreateAndCapture}
-                  disabled={!activityName.trim()}
-                  className={`w-full font-bold text-lg py-4 rounded-2xl transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
-                    activityName.trim() ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-gray-200 text-gray-400 shadow-none'
-                  }`}
-                >
-                  <span>Crear Actividad</span>
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

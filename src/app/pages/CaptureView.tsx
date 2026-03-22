@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Save, MessageSquare, Check, X, Search, Loader, Nfc, RadioReceiver } from 'lucide-react';
+import { 
+  ArrowLeft, Save, MessageSquare, Check, X, Search, Loader, Nfc, RadioReceiver,
+  BookOpen, FileText, MapPin, HeartHandshake, ChevronRight, Plus
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { studentService } from '../../services/studentService';
 import { activityService } from '../../services/activityService';
+import { authService } from '../../services/authService';
 import { hardwareServices } from '../../utils/hardwareServices';
+
+const CAMPOS = [
+  { id: 'lenguajes', name: 'Lenguajes', color: 'bg-orange-500', lightColor: 'bg-orange-100', textColor: 'text-orange-600', icon: BookOpen },
+  { id: 'saberes', name: 'Saberes y Pensamiento', color: 'bg-blue-500', lightColor: 'bg-blue-100', textColor: 'text-blue-600', icon: FileText },
+  { id: 'etica', name: 'Ética y Naturaleza', color: 'bg-purple-500', lightColor: 'bg-purple-100', textColor: 'text-purple-600', icon: MapPin },
+  { id: 'comunitario', name: 'De lo Humano', color: 'bg-green-500', lightColor: 'bg-green-100', textColor: 'text-green-600', icon: HeartHandshake }
+];
+
 
 export function CaptureView() {
   const navigate = useNavigate();
@@ -22,6 +34,13 @@ export function CaptureView() {
 
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [loadingActiveActivity, setLoadingActiveActivity] = useState(true);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [newActivityName, setNewActivityName] = useState('');
+  const [newActivityType, setNewActivityType] = useState('registro');
+  const [newEvaluationScale, setNewEvaluationScale] = useState<'numeric' | 'levels'>('numeric');
+  const [activeCampo, setActiveCampo] = useState('lenguajes');
 
   // Intentar cargar la actividad activa si venimos desde el Side Nav sin estado previo
   useEffect(() => {
@@ -37,7 +56,10 @@ export function CaptureView() {
         .catch(err => {
           console.log('No active activity found:', err);
           setActivityName('Ninguna actividad en la clase');
-        });
+        })
+        .finally(() => setLoadingActiveActivity(false));
+    } else {
+      setLoadingActiveActivity(false);
     }
   }, [activityId]);
 
@@ -207,6 +229,181 @@ export function CaptureView() {
       setSaving(false);
     }
   };
+
+  const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
+
+  const handleCreateActivity = async () => {
+    if (!newActivityName.trim()) return;
+
+    try {
+      const storedUser = authService.getStoredUser();
+      const teacherGroupId = storedUser?.group_info?.id;
+      
+      const response = await activityService.createActivity({
+        title: newActivityName.trim(),
+        subject: currentCampo.name, // The backend expects the subject string, or ID.
+        due_date: new Date().toISOString().split('T')[0],
+        group_id: teacherGroupId,
+        type: newActivityType as any,
+        evaluation_scale: newEvaluationScale
+      });
+
+      // Update local state to instantly use the new activity!
+      setActivityId(response.id!);
+      setActivityName(response.title);
+      setActivityType(response.type || 'registro');
+      setEvaluationScale(response.evaluation_scale || 'numeric');
+      setCampoName(response.subject);
+      
+      setShowNewModal(false);
+      setNewActivityName('');
+    } catch (error) {
+      console.error("Error creating activity", error);
+      alert("Hubo un error al guardar la actividad en la nube.");
+    }
+  };
+
+  const renderNewActivityModal = () => (
+    <AnimatePresence>
+      {showNewModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setShowNewModal(false)}
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl z-50 overflow-hidden shadow-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col"
+          >
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+              <h2 className="text-xl font-bold text-gray-900">Nueva Actividad</h2>
+              <button 
+                onClick={() => setShowNewModal(false)}
+                className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-white pb-10">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Nombre de la actividad</label>
+                <input 
+                  type="text" 
+                  value={newActivityName}
+                  onChange={(e) => setNewActivityName(e.target.value)}
+                  placeholder="Ej. Lectura de comprensión" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Campo Formativo</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CAMPOS.map(c => (
+                    <button 
+                      key={c.id} 
+                      onClick={() => setActiveCampo(c.id)}
+                      className={`flex items-center gap-2 p-3 rounded-xl border transition-all ${activeCampo === c.id ? `border-${c.color.split('-')[1]}-500 ${c.lightColor} ${c.textColor}` : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
+                      <c.icon className="w-4 h-4" />
+                      <span className="text-xs font-bold">{c.name.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Registro</label>
+                <div className="flex bg-gray-100 p-1 rounded-xl">
+                  <button 
+                    onClick={() => setNewActivityType('registro')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newActivityType === 'registro' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
+                  >
+                    Solo registro
+                  </button>
+                  <button 
+                    onClick={() => setNewActivityType('participacion')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newActivityType === 'participacion' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
+                  >
+                    Participación
+                  </button>
+                  <button 
+                    onClick={() => setNewActivityType('calificada')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${newActivityType === 'calificada' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
+                  >
+                    Calificada
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Evaluación (OBLIGATORIO)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => setNewEvaluationScale('numeric')}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${newEvaluationScale === 'numeric' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    <span className="font-bold text-sm">Numérica</span>
+                    <span className="text-[10px] mt-1 opacity-80">(del 5 al 10)</span>
+                  </button>
+                  <button 
+                    onClick={() => setNewEvaluationScale('levels')}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${newEvaluationScale === 'levels' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    <span className="font-bold text-sm">Niveles de Desarrollo</span>
+                    <span className="text-[10px] mt-1 opacity-80">(formativo)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-white border-t border-gray-100 shrink-0">
+              <button 
+                onClick={handleCreateActivity}
+                disabled={!newActivityName.trim()}
+                className={`w-full font-bold text-lg py-4 rounded-2xl transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
+                  newActivityName.trim() ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-gray-200 text-gray-400 shadow-none'
+                }`}
+              >
+                <span>Crear Actividad</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
+  if (!activityId && !loadingActiveActivity) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50 relative absolute inset-0 overflow-hidden">
+         {/* HEADER EMPTY STATE */}
+         <div className="bg-white px-4 pt-6 pb-4 shadow-sm z-10 shrink-0">
+            <h1 className="text-gray-900 font-bold text-xl text-center">Captura Híbrida</h1>
+         </div>
+         <div className="flex flex-col items-center justify-center flex-1 px-6 text-center">
+            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+               <Nfc className="w-10 h-10 text-blue-500" />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">No hay actividad activa</h2>
+            <p className="text-gray-500 mb-8 max-w-sm">
+              Crea una actividad para habilitar el escáner NFC y comenzar la captura rápida.
+            </p>
+            <button 
+              onClick={() => setShowNewModal(true)}
+              className="bg-blue-600 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-all w-full max-w-sm flex items-center justify-center gap-2"
+            >
+              <Plus className="w-6 h-6" /> Crear Nueva Actividad
+            </button>
+         </div>
+         
+         {renderNewActivityModal()}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden">
@@ -400,6 +597,8 @@ export function CaptureView() {
           </>
         )}
       </AnimatePresence>
+
+      {renderNewActivityModal()}
     </div>
   );
 }
