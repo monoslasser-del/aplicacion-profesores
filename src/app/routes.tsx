@@ -4,6 +4,8 @@ import { RootLayout } from "./components/RootLayout";
 import { CaptureFlow } from "./pages/CaptureFlow";
 import { DashboardScreen } from "./pages/DashboardScreen";
 import { StudentProfileScreen } from "./pages/StudentProfileScreen";
+import { StudentAttendanceScreen } from "./pages/students/StudentAttendanceScreen";
+import { StudentWorksScreen } from "./pages/students/StudentWorksScreen";
 import { ActivitiesScreen } from "./pages/ActivitiesScreen";
 import { StudentListScreen } from "./pages/StudentListScreen";
 import { ContinuousNfcScreen } from "./pages/ContinuousNfcScreen";
@@ -36,6 +38,8 @@ export const router = createHashRouter([
       { path: "import-students", element: <ImportStudentsScreen /> },
       { path: "dashboard", element: <DashboardScreen /> },
       { path: "student/:id", element: <StudentProfileScreen /> },
+      { path: "student/:id/attendance", element: <StudentAttendanceScreen /> },
+      { path: "student/:id/works", element: <StudentWorksScreen /> },
       { path: "students", element: <StudentListScreen /> },
       { path: "activities", element: <ActivitiesScreen /> },
       { path: "activity/:id", element: <ActivityDetailScreen /> },
