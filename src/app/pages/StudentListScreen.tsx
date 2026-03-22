@@ -32,7 +32,7 @@ const mapApiToLocal = (s: ApiStudent): Student => {
     lastName:    parts.slice(-2).join(' ')     || '',
     curp:        s.curp ?? '',
     status:      'present',
-    isRepetidor: false,
+    isRepetidor: !!s.is_repetidor,
   };
 };
 
