@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { activityService } from '../../services/activityService';
+import { authService } from '../../services/authService';
 
 // Tipos de datos mock
 type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
@@ -42,31 +43,47 @@ export function ActivitiesScreen() {
   // New Activity State
   const [activityName, setActivityName] = useState('');
   const [activityType, setActivityType] = useState('registro'); // 'registro', 'participacion', 'calificada'
+  const [evaluationScale, setEvaluationScale] = useState<'numeric' | 'levels'>('numeric');
 
   const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
   const Icon = currentCampo.icon;
 
-  // Mock Students & Progress
-  const students = [
-    { listNumber: 1, name: 'Isabela Martínez Solano', totalAct: 12, graded: 10, pending: 2, avg: 9.2, status: 'good' },
-    { listNumber: 2, name: 'Valeria Santos López', totalAct: 12, graded: 6, pending: 6, avg: 7.5, status: 'warning' },
-    { listNumber: 3, name: 'Tuliana Rey Gómez', totalAct: 12, graded: 11, pending: 1, avg: 8.8, status: 'good' },
-    { listNumber: 4, name: 'Mariña Lierio Boscolaz', totalAct: 12, graded: 4, pending: 8, avg: 6.5, status: 'danger' },
-    { listNumber: 5, name: 'Ennilia Damienjrm Veríbe', totalAct: 12, graded: 9, pending: 3, avg: 8.0, status: 'warning' },
-    { listNumber: 6, name: 'Daniela Ruane Latúnez', totalAct: 12, graded: 12, pending: 0, avg: 9.5, status: 'good' },
-    { listNumber: 7, name: 'Sebastián Ventèz Latúnez', totalAct: 12, graded: 5, pending: 7, avg: 6.0, status: 'danger' },
-    { listNumber: 8, name: 'Sebastián Lieti Perez', totalAct: 12, graded: 8, pending: 4, avg: 7.2, status: 'warning' },
-    { listNumber: 9, name: 'Eleazar Dannejen Veríbe', totalAct: 12, graded: 10, pending: 2, avg: 8.5, status: 'good' },
-    { listNumber: 10, name: 'Dáña Ratáel Camerń', totalAct: 12, graded: 11, pending: 1, avg: 9.0, status: 'good' },
-  ];
+  // State for Real Data
+  const [students, setStudents] = useState<any[]>([]);
+  const [dbActivities, setDbActivities] = useState<any[]>([]);
 
-  // Mock Structure for Table Data
-  const daysColumns = [
-    { name: 'Lunes', actividades: [{ id: 'A1', label: 'A' }, { id: 'A2', label: '2' }] },
-    { name: 'Martes', actividades: [{ id: 'A3', label: '3' }, { id: 'A4', label: '4' }] },
-    { name: 'Miercoles', actividades: [{ id: 'A5', label: '5' }, { id: 'A6', label: '6' }] },
-    { name: 'Jueves', actividades: [{ id: 'A7', label: '7' }, { id: 'A8', label: '8' }] },
-    { name: 'Viernes', actividades: [{ id: 'A9', label: '9' }, { id: 'A10', label: '10' }] }
+  // Fetch from DB
+  React.useEffect(() => {
+    import('../../services/studentService').then(({ studentService }) => {
+      studentService.getStudents().then(data => {
+        setStudents(data.map((s, index) => ({
+          listNumber: index + 1,
+          name: s.name,
+          totalAct: 12,
+          graded: 10,
+          pending: 2,
+          avg: 9.0,
+          status: 'good'
+        })));
+      });
+    });
+
+    activityService.getActivities().then(data => {
+      setDbActivities(data);
+    });
+  }, []);
+
+  // Filter activities by active Campo
+  const filteredActivities = dbActivities.filter(a => a.subject === activeCampo);
+  
+  // Group activities dynamically for the table header
+  const daysColumns = filteredActivities.length > 0 ? [
+    { 
+      name: 'Actividades NEM', 
+      actividades: filteredActivities.map(a => ({ id: String(a.id), label: a.title.substring(0, 10) })) 
+    }
+  ] : [
+    { name: 'Sin Actividades', actividades: [{ id: '-', label: 'N/A' }] }
   ];
 
   // Random Data Generator Helper
@@ -113,13 +130,15 @@ export function ActivitiesScreen() {
     if (!activityName.trim()) return;
 
     try {
-      // Create the activity in the remote database (group_id hardcoded / backend resolves or it requires it)
-      // Since group_id is required we default to 1, usually we'd pass active user's group.
+      const storedUser = authService.getStoredUser();
+      const teacherGroupId = storedUser?.group_info?.id;
+      
       const response = await activityService.createActivity({
         title: activityName.trim(),
         subject: currentCampo.id,
         due_date: new Date().toISOString().split('T')[0],
-        group_id: 1 // Default group_id pending auth user's actual group parsing
+        group_id: teacherGroupId,
+        evaluation_scale: evaluationScale
       });
 
       // Navigate to the manual capture view of the new activity
@@ -130,7 +149,8 @@ export function ActivitiesScreen() {
           activityName: activityName.trim(),
           campoName: currentCampo.name,
           campoColor: currentCampo.color,
-          activityType: activityType
+          activityType: activityType,
+          evaluationScale: evaluationScale
         }
       });
       
@@ -500,6 +520,26 @@ export function ActivitiesScreen() {
                       className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activityType === 'calificada' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:bg-gray-200/50'}`}
                     >
                       Calificada
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Evaluación (OBLIGATORIO)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      onClick={() => setEvaluationScale('numeric')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${evaluationScale === 'numeric' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <span className="font-bold text-sm">Numérica</span>
+                      <span className="text-[10px] mt-1 opacity-80">(del 5 al 10)</span>
+                    </button>
+                    <button 
+                      onClick={() => setEvaluationScale('levels')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${evaluationScale === 'levels' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <span className="font-bold text-sm">Niveles de Desarrollo</span>
+                      <span className="text-[10px] mt-1 opacity-80">(formativo)</span>
                     </button>
                   </div>
                 </div>
