@@ -11,9 +11,11 @@ import { CapacitorNfc } from '@capgo/capacitor-nfc';
 import { studentService } from '../../services/studentService';
 import type { Student as ApiStudent } from '../../services/studentService';
 import { authService } from '../../services/authService';
+import { StudentCard } from './students/StudentCard';
+import { StudentActionModal } from './students/StudentActionModal';
 
 // ── Local shape ──────────────────────────────────────────────
-interface Student {
+export interface Student {
   id: string;
   firstName: string;
   lastName: string;
@@ -122,13 +124,6 @@ export function StudentListScreen() {
     pdfGenerator.generate911ReportPDF(rows);
   };
 
-  // ── Status icon ──
-  const StatusIcon = ({ status }: { status: string }) => {
-    if (status === 'present') return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-    if (status === 'absent')  return <XCircle className="w-4 h-4 text-red-400" />;
-    return <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-white text-[9px] font-bold">T</div>;
-  };
-
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden">
 
@@ -215,32 +210,11 @@ export function StudentListScreen() {
           <div className="space-y-3 pb-24">
             <AnimatePresence>
               {filteredStudents.map((student, i) => (
-                <motion.div
-                  key={student.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: Math.min(i * 0.04, 0.3), duration: 0.2 }}
-                  onClick={() => setSelectedStudent(student)}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 cursor-pointer active:scale-[.98] transition-transform"
-                >
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center shrink-0 border border-blue-50">
-                    <span className="text-blue-700 font-black text-sm">
-                      {student.lastName.charAt(0)}{student.firstName.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-gray-900 font-bold text-base truncate">{student.lastName}</h3>
-                    <p className="text-gray-500 text-sm truncate">{student.firstName}</p>
-                    {student.curp && <p className="text-gray-400 text-[10px] font-mono mt-0.5">{student.curp}</p>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusIcon status={student.status} />
-                    <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </div>
-                </motion.div>
+                <StudentCard 
+                  key={student.id} 
+                  student={student} 
+                  onSelect={setSelectedStudent} 
+                />
               ))}
             </AnimatePresence>
 
@@ -263,59 +237,11 @@ export function StudentListScreen() {
       </div>
 
       {/* ── Student Detail Bottom Sheet ── */}
-      <AnimatePresence>
-        {selectedStudent && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setSelectedStudent(null)}
-              className="absolute inset-0 bg-black/40 z-40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 shadow-2xl pb-6"
-            >
-              <div className="p-6">
-                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="text-blue-700 font-black text-lg">
-                        {selectedStudent.lastName.charAt(0)}{selectedStudent.firstName.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900 leading-tight">{selectedStudent.firstName} {selectedStudent.lastName}</h2>
-                      <p className="text-gray-400 text-xs font-mono mt-0.5">{selectedStudent.curp || 'Sin CURP'}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setSelectedStudent(null)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center active:bg-gray-200">
-                    <X className="w-5 h-5 text-gray-600" />
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  <button onClick={() => navigate(`/student/${selectedStudent.id}`)}
-                    className="w-full bg-gray-50 flex items-center gap-4 p-4 rounded-2xl active:bg-gray-100 transition-colors">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0"><User className="w-5 h-5 text-blue-600" /></div>
-                    <div className="flex-1 text-left"><h3 className="text-gray-900 font-bold text-sm">Ver Perfil Completo</h3><p className="text-gray-500 text-xs mt-0.5">Historial, datos y gráficas</p></div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                  <button className="w-full bg-blue-50 flex items-center gap-4 p-4 rounded-2xl active:bg-blue-100 transition-colors">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0"><CalendarDays className="w-5 h-5 text-blue-600" /></div>
-                    <div className="flex-1 text-left"><h3 className="text-blue-900 font-bold text-sm">Asistencias con Calendario</h3><p className="text-blue-600/70 text-xs mt-0.5">Revisar reporte de faltas</p></div>
-                    <ChevronRight className="w-5 h-5 text-blue-400" />
-                  </button>
-                  <button className="w-full bg-purple-50 flex items-center gap-4 p-4 rounded-2xl active:bg-purple-100 transition-colors">
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0"><BookOpen className="w-5 h-5 text-purple-600" /></div>
-                    <div className="flex-1 text-left"><h3 className="text-purple-900 font-bold text-sm">Registro de Trabajos</h3><p className="text-purple-600/70 text-xs mt-0.5">Por campos formativos</p></div>
-                    <ChevronRight className="w-5 h-5 text-purple-400" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <StudentActionModal 
+        isOpen={!!selectedStudent} 
+        student={selectedStudent} 
+        onClose={() => setSelectedStudent(null)} 
+      />
 
       {/* ── Enrollment Modal ── */}
       <AnimatePresence>
