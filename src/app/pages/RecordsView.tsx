@@ -30,7 +30,7 @@ const CAMPOS = [
   { id: 'comunitario', name: 'De lo Humano', color: 'bg-green-500', lightColor: 'bg-green-100', textColor: 'text-green-600', icon: HeartHandshake }
 ];
 
-export function ActivitiesScreen() {
+export function RecordsView() {
   const navigate = useNavigate();
   const [activeCampo, setActiveCampo] = useState('lenguajes');
   const [viewMode, setViewMode] = useState<'resumen' | 'detalle'>('detalle'); // Default to detalle para mostrar la nueva vista

@@ -8,6 +8,7 @@ export interface Activity {
   due_date?: string;
   group_id?: number | string;
   evaluation_scale?: 'numeric' | 'levels';
+  type?: 'registro' | 'participacion' | 'calificada';
 }
 
 export interface Grade {
@@ -21,6 +22,7 @@ export interface Grade {
 
 export const activityService = {
   getActivities: () => apiClient.get<Activity[]>('/v1/activities'),
+  getActiveActivity: () => apiClient.get<Activity>('/v1/activities/active'),
   createActivity: (data: Activity) => apiClient.post<Activity>('/v1/activities', data),
   updateActivity: (id: number, data: Partial<Activity>) => apiClient.put<Activity>(`/v1/activities/${id}`, data),
   deleteActivity: (id: number) => apiClient.delete(`/v1/activities/${id}`),

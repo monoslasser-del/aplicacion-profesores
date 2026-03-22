@@ -26,7 +26,7 @@ export function ActivityDetailScreen() {
   // State para el modal flotante de selección de escala (sólo si es Actividad Calificada)
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [pendingRoute, setPendingRoute] = useState<'nfc' | 'manual' | null>(null);
-  const [evalScale, setEvalScale] = useState('numerica'); // 'numerica', 'estatus'
+  const [evalScale, setEvalScale] = useState('numeric'); // 'numeric', 'levels'
 
   const startCapture = (method: 'nfc' | 'manual') => {
     if (activityType === 'calificada') {
@@ -47,20 +47,12 @@ export function ActivityDetailScreen() {
       activityName,
       campoName,
       campoColor,
-      isGraded: activityType === 'calificada',
-      evalScale: configuredScale || null
+      activityType: activityType,
+      evaluationScale: configuredScale || null
     };
 
-    if (method === 'manual') {
-      if (activityType === 'calificada') {
-         navigate('/evaluation-capture', { state: baseState });
-      } else {
-         navigate('/manual-capture', { state: baseState });
-      }
-    } else {
-      // Flujo NFC Continuo
-      navigate('/capture', { state: baseState });
-    }
+    // Todo converge en la nueva vista híbrida
+    navigate('/manual-capture', { state: baseState });
   };
 
   return (
@@ -187,26 +179,26 @@ export function ActivityDetailScreen() {
                 
                 <div className="grid grid-cols-2 gap-3 mb-8">
                   <button 
-                    onClick={() => setEvalScale('numerica')}
+                    onClick={() => setEvalScale('numeric')}
                     className={`flex flex-col items-start p-4 rounded-2xl border-2 transition-all ${
-                      evalScale === 'numerica' 
+                      evalScale === 'numeric' 
                         ? 'border-indigo-500 bg-indigo-50 shadow-sm' 
                         : 'border-slate-100 bg-white text-slate-500 hover:border-slate-300'
                     }`}
                   >
-                    <span className={`text-base font-bold mb-1 ${evalScale === 'numerica' ? 'text-indigo-900' : 'text-slate-700'}`}>🔢 Numérica</span>
-                    <span className={`text-[11px] leading-snug ${evalScale === 'numerica' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>Del 5 al 10 con decimales.</span>
+                    <span className={`text-base font-bold mb-1 ${evalScale === 'numeric' ? 'text-indigo-900' : 'text-slate-700'}`}>🔢 Numérica</span>
+                    <span className={`text-[11px] leading-snug ${evalScale === 'numeric' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>Del 5 al 10 con decimales.</span>
                   </button>
                   <button 
-                    onClick={() => setEvalScale('estatus')}
+                    onClick={() => setEvalScale('levels')}
                     className={`flex flex-col items-start p-4 rounded-2xl border-2 transition-all ${
-                      evalScale === 'estatus' 
+                      evalScale === 'levels' 
                         ? 'border-indigo-500 bg-indigo-50 shadow-sm' 
                         : 'border-slate-100 bg-white text-slate-500 hover:border-slate-300'
                     }`}
                   >
-                    <span className={`text-base font-bold mb-1 ${evalScale === 'estatus' ? 'text-indigo-900' : 'text-slate-700'}`}>🚥 Estatus</span>
-                    <span className={`text-[11px] leading-snug ${evalScale === 'estatus' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>Bien, Incompleto, Pendiente.</span>
+                    <span className={`text-base font-bold mb-1 ${evalScale === 'levels' ? 'text-indigo-900' : 'text-slate-700'}`}>🚥 Niveles</span>
+                    <span className={`text-[11px] leading-snug ${evalScale === 'levels' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>Desarrollo / Formativo.</span>
                   </button>
                 </div>
 

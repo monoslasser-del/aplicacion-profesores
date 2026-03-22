@@ -6,22 +6,40 @@ import { studentService } from '../../services/studentService';
 import { activityService } from '../../services/activityService';
 import { hardwareServices } from '../../utils/hardwareServices';
 
-export function ManualCaptureScreen() {
+export function CaptureView() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [isNfcActive, setIsNfcActive] = useState(false);
   
-  const state = location.state || {};
-  const activityId = state.activityId;
-  const activityType = state.activityType || 'registro';
-  const activityName = state.activityName || 'Lectura de comprensión';
-  const campoName = state.campoName || 'Lenguajes';
-  const evaluationScale = state.evaluationScale || 'numeric';
+  // States to represent the current activity gracefully
+  const [activityId, setActivityId] = useState<number | null>(location.state?.activityId || null);
+  const [activityType, setActivityType] = useState(location.state?.activityType || 'registro');
+  const [activityName, setActivityName] = useState(location.state?.activityName || 'Cargando sesión...');
+  const [campoName, setCampoName] = useState(location.state?.campoName || '');
+  const [evaluationScale, setEvaluationScale] = useState(location.state?.evaluationScale || 'numeric');
 
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Intentar cargar la actividad activa si venimos desde el Side Nav sin estado previo
+  useEffect(() => {
+    if (!activityId) {
+      activityService.getActiveActivity()
+        .then(act => {
+          setActivityId(act.id!);
+          setActivityName(act.title);
+          setActivityType(act.type || 'registro');
+          setEvaluationScale(act.evaluation_scale || 'numeric');
+          setCampoName(act.subject);
+        })
+        .catch(err => {
+          console.log('No active activity found:', err);
+          setActivityName('Ninguna actividad en la clase');
+        });
+    }
+  }, [activityId]);
 
   const studentsRef = useRef(students);
   useEffect(() => {
