@@ -49,7 +49,7 @@ export function ImportStudentsScreen() {
           name: s.name,
           curp: s.curp ?? '',
           hasNfc: !!s.nfc_tag,
-          isRepetidor: false,
+          isRepetidor: !!s.is_repetidor,
         })));
       })
       .catch(err => console.error('Error cargando alumnos:', err));
@@ -132,7 +132,7 @@ export function ImportStudentsScreen() {
       // Refrescar con IDs reales
       const updated = await studentService.getStudents();
       setStudents(updated.map((s: any, i: number) => ({
-        id: s.id, nl: i + 1, name: s.name, curp: s.curp ?? '', hasNfc: !!s.nfc_tag, isRepetidor: false,
+        id: s.id, nl: i + 1, name: s.name, curp: s.curp ?? '', hasNfc: !!s.nfc_tag, isRepetidor: !!s.is_repetidor,
       })));
     } catch (e: any) {
       setFeedback({ ok: false, msg: e.message ?? 'Error al guardar.' });
@@ -172,8 +172,8 @@ export function ImportStudentsScreen() {
     }
   };
 
-  const toggleRepeater = (studentId: string | number) => {
-    setStudents(prev => prev.map(s => String(s.id) === String(studentId) ? { ...s, isRepetidor: !s.isRepetidor } : s));
+  const toggleRepeater = (identifier: string | number) => {
+    setStudents(prev => prev.map(s => String(s.id ?? s.nl) === String(identifier) ? { ...s, isRepetidor: !s.isRepetidor } : s));
   };
 
   return (

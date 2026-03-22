@@ -7,6 +7,7 @@ export interface Student {
   nfc_tag?: string;
   group_id?: number | string;
   is_active?: boolean;
+  is_repetidor?: boolean;
 }
 
 export const studentService = {
