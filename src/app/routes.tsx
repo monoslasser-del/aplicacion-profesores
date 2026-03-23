@@ -20,6 +20,7 @@ import { AddCalendarEventScreen } from "./pages/AddCalendarEventScreen";
 import { PricingScreen } from "./pages/PricingScreen";
 import { ExamBuilderScreen } from "./pages/ExamBuilderScreen";
 import { ExamBuilderStep2Screen } from "./pages/ExamBuilderStep2Screen";
+import { TeacherProfileScreen } from "./pages/TeacherProfileScreen";
 
 export const router = createHashRouter([
   {
@@ -47,6 +48,7 @@ export const router = createHashRouter([
       { path: "add-event", element: <AddCalendarEventScreen /> },
       { path: "exam-builder", element: <ExamBuilderScreen /> },
       { path: "exam-builder-step2", element: <ExamBuilderStep2Screen /> },
+      { path: "perfil", element: <TeacherProfileScreen /> },
     ],
   },
 ]);

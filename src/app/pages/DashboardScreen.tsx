@@ -304,6 +304,19 @@ export function DashboardScreen() {
                 <span className="text-gray-700 font-medium">Planes y Precios</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
+              {/* Mi Perfil */}
+              <div className="my-2 border-t border-gray-100" />
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/perfil');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-violet-50 transition-colors text-left"
+              >
+                <Settings className="w-5 h-5 text-violet-500" />
+                <span className="text-gray-700 font-medium">Mi Perfil y Cuenta</span>
+                <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
+              </button>
             </div>
           </motion.div>
         </motion.div>
