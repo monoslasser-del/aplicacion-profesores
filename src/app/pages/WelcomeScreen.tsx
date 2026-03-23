@@ -24,8 +24,7 @@ export function WelcomeScreen() {
   return (
     <div style={{
       display:'flex',flexDirection:'column',
-      minHeight:'100dvh',
-      background:'#f8fafc',
+      height:'100dvh',          // fills exactly the viewport — no scroll
       overflow:'hidden',
       position:'relative',
       fontFamily:'Inter, system-ui, sans-serif',
@@ -54,54 +53,50 @@ export function WelcomeScreen() {
       {/* ── HEADER SECTION ───────────────────────────────── */}
       <div style={{
         flex:'0 0 auto',
-        paddingTop:'env(safe-area-inset-top, 48px)',
-        paddingTop:48,
         display:'flex',flexDirection:'column',alignItems:'center',
-        padding:'52px 28px 0',
+        padding:'40px 28px 0',
       }}>
-        {/* Brand chip */}
+        {/* Brand chip — compact */}
         <motion.div
           initial={{opacity:0,y:-12}}
           animate={{opacity:1,y:0}}
           transition={{delay:.1}}
           style={{
-            display:'inline-flex',alignItems:'center',gap:6,
-            padding:'5px 14px',borderRadius:99,
+            display:'inline-flex',alignItems:'center',gap:5,
+            padding:'4px 12px',borderRadius:99,
             background:'rgba(37,99,235,0.08)',
             border:'1px solid rgba(37,99,235,0.2)',
-            marginBottom:24,
           }}>
-          <span style={{width:7,height:7,borderRadius:'50%',background:'#2563eb',display:'inline-block'}}/>
-          <span style={{fontSize:11,fontWeight:800,color:'#2563eb',letterSpacing:'0.06em',textTransform:'uppercase'}}>
+          <span style={{width:6,height:6,borderRadius:'50%',background:'#2563eb',display:'inline-block'}}/>
+          <span style={{fontSize:10,fontWeight:800,color:'#2563eb',letterSpacing:'0.06em',textTransform:'uppercase'}}>
             Plataforma Educativa
           </span>
         </motion.div>
       </div>
 
-      {/* ── CENTER: MASCOT + BRAND NAME ──────────────────── */}
       <div style={{
         flex:1,display:'flex',flexDirection:'column',
         alignItems:'center',justifyContent:'center',
         padding:'0 28px',
+        gap:0,
       }}>
 
-        {/* Mascot */}
         <motion.div
           initial={{scale:.7,opacity:0,y:20}}
           animate={{scale:1,opacity:1,y:0}}
           transition={{type:'spring',stiffness:180,damping:18,delay:.15}}
-          style={{marginBottom:24,position:'relative'}}
+          style={{marginBottom:16,position:'relative'}}
         >
           {/* Glow ring */}
           <div style={{
-            position:'absolute',inset:'-12px',borderRadius:'50%',
+            position:'absolute',inset:'-10px',borderRadius:'50%',
             background:'radial-gradient(circle,rgba(37,99,235,0.12),transparent 70%)',
             animation:'pulse 3s ease-in-out infinite',
           }}/>
           <img
             src={tizaMascot}
             alt="Tiza mascot"
-            style={{width:140,height:140,objectFit:'contain',position:'relative',zIndex:1}}
+            style={{width:110,height:110,objectFit:'contain',position:'relative',zIndex:1}}
           />
         </motion.div>
 
@@ -113,7 +108,7 @@ export function WelcomeScreen() {
           style={{textAlign:'center',marginBottom:10}}
         >
           <h1 style={{
-            fontSize:36,fontWeight:900,lineHeight:1.1,
+            fontSize:30,fontWeight:900,lineHeight:1.1,
             margin:0,letterSpacing:'-0.03em',
             background:'linear-gradient(135deg,#0f172a 0%,#2563eb 60%,#4f46e5 100%)',
             WebkitBackgroundClip:'text',
@@ -122,21 +117,20 @@ export function WelcomeScreen() {
             Tiza &amp; Datos
           </h1>
           <p style={{
-            fontSize:13,fontWeight:600,color:'#64748b',
-            marginTop:6,marginBottom:0,letterSpacing:'0.01em',
+            fontSize:12,fontWeight:600,color:'#64748b',
+            marginTop:5,marginBottom:0,letterSpacing:'0.01em',
           }}>
             Tu asistente educativo inteligente
           </p>
         </motion.div>
 
-        {/* Rotating feature pill */}
         <motion.div
           initial={{opacity:0}}
           animate={{opacity:1}}
           transition={{delay:.4}}
           style={{
-            height:36,display:'flex',alignItems:'center',
-            justifyContent:'center',marginTop:8,marginBottom:0,
+            height:32,display:'flex',alignItems:'center',
+            justifyContent:'center',marginTop:10,
           }}
         >
           <AnimatePresence mode="wait">
@@ -166,8 +160,8 @@ export function WelcomeScreen() {
       {/* ── BOTTOM ACTIONS ───────────────────────────────── */}
       <div style={{
         flex:'0 0 auto',
-        padding:'20px 28px 40px',
-        display:'flex',flexDirection:'column',gap:12,
+        padding:'12px 24px 32px',
+        display:'flex',flexDirection:'column',gap:10,
       }}>
         {/* Create account */}
         <motion.button
@@ -177,10 +171,10 @@ export function WelcomeScreen() {
           whileTap={{scale:.97}}
           onClick={() => navigate('/register')}
           style={{
-            width:'100%',padding:'16px',border:'none',borderRadius:18,
+            width:'100%',padding:'14px',border:'none',borderRadius:16,
             background:'linear-gradient(135deg,#2563eb,#4f46e5)',
-            color:'white',fontWeight:800,fontSize:16,cursor:'pointer',
-            boxShadow:'0 8px 28px rgba(37,99,235,0.35)',
+            color:'white',fontWeight:800,fontSize:15,cursor:'pointer',
+            boxShadow:'0 8px 24px rgba(37,99,235,0.32)',
             fontFamily:'inherit',letterSpacing:'-0.01em',
           }}
         >
@@ -195,29 +189,16 @@ export function WelcomeScreen() {
           whileTap={{scale:.97}}
           onClick={() => navigate('/login')}
           style={{
-            width:'100%',padding:'16px',borderRadius:18,
+            width:'100%',padding:'14px',borderRadius:16,
             border:'2px solid #e2e8f0',
             background:'white',color:'#334155',
-            fontWeight:700,fontSize:16,cursor:'pointer',
+            fontWeight:700,fontSize:15,cursor:'pointer',
             boxShadow:'0 1px 4px rgba(15,23,42,0.06)',
             fontFamily:'inherit',letterSpacing:'-0.01em',
           }}
         >
           Ya tengo cuenta
         </motion.button>
-
-        {/* Footer tagline */}
-        <motion.p
-          initial={{opacity:0}}
-          animate={{opacity:1}}
-          transition={{delay:.75}}
-          style={{
-            textAlign:'center',fontSize:11,color:'#94a3b8',
-            fontWeight:500,margin:0,paddingTop:4,
-          }}
-        >
-          Hecho para docentes de México 🇲🇽 · Ciclo NEM 2024-2025
-        </motion.p>
       </div>
 
       <style>{`
