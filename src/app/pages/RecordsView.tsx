@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router';
 import { activityService } from '../../services/activityService';
 import { authService } from '../../services/authService';
 import { useFormativeFields } from '../../hooks/useFormativeFields';
+import * as XLSX from 'xlsx';
 
 // Tipos de datos mock
 type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
@@ -117,6 +118,35 @@ export function RecordsView() {
     return <span className="font-bold text-sm text-gray-700">{status}</span>;
   };
 
+  const exportToExcel = () => {
+    // 1. Prepare Data
+    const excelData = students.map(student => {
+      // Base columns
+      const row: any = {
+        'N° Lista': student.listNumber,
+        'Nombre Completo': student.name,
+        'CURP/Matrícula': `MAT-${2026000 + student.listNumber}`, // Dato mock
+      };
+      
+      // Dynamic Activity columns baseadas en el campo formativo filtrado
+      filteredActivities.forEach(act => {
+        const val = getCellStatus(student.listNumber, act.id);
+        const translated = val === 'B' ? 'Bien' : val === 'P' ? 'Pendiente' : val === 'I' ? 'Incompleto' : val;
+        row[act.title] = translated;
+      });
+      
+      return row;
+    });
+
+    // 2. Generate Sheet and Workbook
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Evaluacion_Grupo');
+    
+    // 3. Force download
+    XLSX.writeFile(workbook, `Sabana_Semana24_${activeCampo}.xlsx`);
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden z-0">
       {/* Header Concentrado */}
@@ -176,6 +206,9 @@ export function RecordsView() {
         </div>
         <button className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200">
           <Filter className="w-5 h-5" />
+        </button>
+        <button onClick={exportToExcel} className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600 active:bg-green-200" title="Exportar Sábana a Excel">
+          <FileSpreadsheet className="w-5 h-5" />
         </button>
       </div>
 
