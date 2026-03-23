@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, User, MapPin, AlertCircle, ArrowRight, BookOpen, GraduationCap, ChevronDown } from 'lucide-react';
+import { Mail, Lock, User, MapPin, AlertCircle, ArrowRight, GraduationCap, ChevronDown } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { googleAuthService } from '../../services/googleAuthService';
+import tizaMascot from '../../assets/tiza_mascot.svg';
 import {
   EDUCATIONAL_LEVELS, GRADES_BY_LEVEL, GROUPS,
   type EducationalLevel, type GroupLetter
@@ -135,10 +136,8 @@ export function RegisterScreen() {
 
         <div className="relative z-10 flex justify-end w-full">
           <div className="flex items-center gap-3 text-white">
-            <span className="text-2xl font-black tracking-wide">EduPro</span>
-            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/10">
-              <BookOpen className="w-8 h-8 text-white" />
-            </div>
+            <span className="text-2xl font-black tracking-wide">Tiza &amp; Datos</span>
+            <img src={tizaMascot} alt="Tiza" style={{width:38,height:38,objectFit:'contain',filter:'brightness(0) invert(1) opacity(.9)'}} />
           </div>
         </div>
 
@@ -170,10 +169,8 @@ export function RegisterScreen() {
         <div className="w-full max-w-[500px] my-auto">
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center gap-3 text-blue-900 mb-10 justify-center">
-            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-600/20">
-              <BookOpen className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-black tracking-wide">EduPro</span>
+            <img src={tizaMascot} alt="Tiza" style={{width:34,height:34,objectFit:'contain'}} />
+            <span className="text-2xl font-black tracking-wide" style={{background:'linear-gradient(135deg,#0f172a,#2563eb)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Tiza &amp; Datos</span>
           </div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-8 text-center lg:text-left pt-4 lg:pt-0">

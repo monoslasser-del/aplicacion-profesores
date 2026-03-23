@@ -9,5 +9,4 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
-// Declaración de módulo para react-dom/client (resuelve el error de tipos)
 declare module 'react-dom/client';

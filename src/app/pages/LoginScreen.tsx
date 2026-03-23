@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router';
-import { Mail, Lock, Check, AlertCircle, ArrowRight, BookOpen } from 'lucide-react';
+import { Mail, Lock, Check, AlertCircle, ArrowRight } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { googleAuthService } from '../../services/googleAuthService';
+import tizaMascot from '../../assets/tiza_mascot.svg';
 
 export function LoginScreen() {
   const navigate = useNavigate();
@@ -50,10 +51,8 @@ export function LoginScreen() {
         
         <div className="relative z-10">
           <div className="flex items-center gap-3 text-white mb-16">
-            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/10">
-              <BookOpen className="w-8 h-8 text-white" />
-            </div>
-            <span className="text-2xl font-black tracking-wide">EduPro</span>
+            <img src={tizaMascot} alt="Tiza" style={{width:38,height:38,objectFit:'contain',filter:'brightness(0) invert(1) opacity(.9)'}} />
+            <span className="text-2xl font-black tracking-wide">Tiza &amp; Datos</span>
           </div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
             <h2 className="text-5xl font-black text-white leading-tight mb-6">
@@ -66,7 +65,7 @@ export function LoginScreen() {
         </div>
 
         <div className="relative z-10 flex items-center gap-4 text-blue-200 text-sm font-medium">
-          <span>© 2026 EduPro</span>
+          <span>© 2026 Tiza &amp; Datos</span>
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></div>
           <span>Privacidad</span>
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></div>
@@ -81,10 +80,8 @@ export function LoginScreen() {
         <div className="w-full max-w-[440px]">
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center gap-3 text-blue-900 mb-12 justify-center">
-            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-600/20">
-              <BookOpen className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-black tracking-wide">EduPro</span>
+            <img src={tizaMascot} alt="Tiza" style={{width:36,height:36,objectFit:'contain'}} />
+            <span className="text-2xl font-black tracking-wide" style={{background:'linear-gradient(135deg,#0f172a,#2563eb)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Tiza &amp; Datos</span>
           </div>
 
           <motion.div 
