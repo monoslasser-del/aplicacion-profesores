@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, Save, MessageSquare, Check, X, Search, Loader, Nfc, RadioReceiver,
-  BookOpen, FileText, MapPin, HeartHandshake, ChevronRight, Plus
+  BookOpen, FileText, MapPin, HeartHandshake, ChevronRight, Plus, CloudOff
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { studentService } from '../../services/studentService';
@@ -10,6 +10,7 @@ import { activityService } from '../../services/activityService';
 import { authService } from '../../services/authService';
 import { hardwareServices } from '../../utils/hardwareServices';
 import { useFormativeFields } from '../../hooks/useFormativeFields';
+import { useSyncStore } from '../../store/useSyncStore';
 
 
 
@@ -38,6 +39,26 @@ export function CaptureView() {
   const [newActivityType, setNewActivityType] = useState('registro');
   const [newEvaluationScale, setNewEvaluationScale] = useState<'numeric' | 'levels'>('numeric');
   const [activeCampo, setActiveCampo] = useState('lenguajes');
+
+  const { pendingRecords, addRecord, syncData, isOnline, setOnlineStatus } = useSyncStore();
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnlineStatus(true);
+      syncData();
+    };
+    const handleOffline = () => setOnlineStatus(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (navigator.onLine) syncData();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [syncData, setOnlineStatus]);
 
   // Intentar cargar la actividad activa si venimos desde el Side Nav sin estado previo
   useEffect(() => {
@@ -154,20 +175,28 @@ export function CaptureView() {
     await hardwareServices.vibrateSuccess(); // Doble retroalimentación al confirmar
 
     // 3. Enviar a backend silenciosamente en background
-    try {
-      let scoreVal = null;
-      let scoreText = null;
+    const scoreVal = gradeValue ? parseFloat(gradeValue) : null;
+    let scoreText = null;
 
-      if (activityType === 'calificada') {
-        if (evaluationScale === 'numeric') {
-          scoreVal = gradeValue ? parseFloat(gradeValue) : null;
-        } else {
-          scoreText = levelValue || null;
-        }
-      } else {
-        scoreText = statusValue === 'yes' ? 'Completado' : (statusValue === 'no' ? 'Pendiente' : null);
+    if (activityType === 'calificada') {
+      if (evaluationScale !== 'numeric') {
+        scoreText = levelValue || null;
       }
+    } else {
+      scoreText = statusValue === 'yes' ? 'Completado' : (statusValue === 'no' ? 'Pendiente' : null);
+    }
 
+    if (!navigator.onLine) {
+      addRecord({
+        studentId: student.id,
+        activityId: activityId.toString(),
+        type: 'evaluation',
+        value: scoreText || (scoreVal !== null ? scoreVal.toString() : undefined)
+      });
+      return;
+    }
+
+    try {
       await activityService.submitGrades(activityId, [{
         student_id: student.id,
         score: scoreVal,
@@ -175,6 +204,12 @@ export function CaptureView() {
       }]);
     } catch (err) {
       console.error('NFC QuickGrade Error:', err);
+      addRecord({
+        studentId: student.id,
+        activityId: activityId.toString(),
+        type: 'evaluation',
+        value: scoreText || (scoreVal !== null ? scoreVal.toString() : undefined)
+      });
     }
   };
 
@@ -493,7 +528,17 @@ export function CaptureView() {
                 {student.listNumber}
               </div>
               <div className="flex-1 px-2 min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">{student.name}</p>
+                <p className="text-sm font-bold text-gray-900 truncate flex items-center gap-2">
+                  {student.name}
+                  {pendingRecords.some((r: any) => r.studentId === student.id && r.activityId === activityId?.toString()) && (
+                    <span title="Pendiente de Sincronizar (Offline)"><CloudOff className="w-3.5 h-3.5 text-gray-400" /></span>
+                  )}
+                  {!pendingRecords.some((r: any) => r.studentId === student.id && r.activityId === activityId?.toString()) && (student.grade || student.level || student.status) && (
+                    <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center" title="Sincronizado">
+                       <Check className="w-2.5 h-2.5 text-green-600" />
+                    </span>
+                  )}
+                </p>
                 {student.nfc_tag && <span className="text-[9px] text-green-500 font-bold uppercase tracking-widest mt-0.5">NFC Vinculado</span>}
               </div>
 
