@@ -55,7 +55,7 @@ export function RootLayout() {
               <span className="text-[10px] font-bold uppercase tracking-wider">Inicio</span>
             </NavLink>
             <NavLink
-              to="/activities"
+              to="/records"
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center w-full h-full gap-1.5 transition-colors ${
                   isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'

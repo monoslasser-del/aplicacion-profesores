@@ -6,9 +6,9 @@ import { DashboardScreen } from "./pages/DashboardScreen";
 import { StudentProfileScreen } from "./pages/StudentProfileScreen";
 import { StudentAttendanceScreen } from "./pages/students/StudentAttendanceScreen";
 import { StudentWorksScreen } from "./pages/students/StudentWorksScreen";
-import { ActivitiesScreen } from "./pages/ActivitiesScreen";
+import { RecordsView } from "./pages/RecordsView";
 import { StudentListScreen } from "./pages/StudentListScreen";
-import { ManualCaptureScreen } from "./pages/ManualCaptureScreen";
+import { CaptureView } from "./pages/CaptureView";
 import { EvaluationCaptureScreen } from "./pages/EvaluationCaptureScreen";
 import { WelcomeScreen } from "./pages/WelcomeScreen";
 import { LoginScreen } from "./pages/LoginScreen";
@@ -31,7 +31,7 @@ export const router = createHashRouter([
       { path: "login", element: <LoginScreen /> },
       { path: "register", element: <RegisterScreen /> },
       { path: "planes", element: <PricingScreen /> },
-      { path: "manual-capture", element: <ManualCaptureScreen /> },
+      { path: "manual-capture", element: <CaptureView /> },
       { path: "evaluation-capture", element: <EvaluationCaptureScreen /> },
       { path: "import-students", element: <ImportStudentsScreen /> },
       { path: "dashboard", element: <DashboardScreen /> },
@@ -39,7 +39,9 @@ export const router = createHashRouter([
       { path: "student/:id/attendance", element: <StudentAttendanceScreen /> },
       { path: "student/:id/works", element: <StudentWorksScreen /> },
       { path: "students", element: <StudentListScreen /> },
-      { path: "activities", element: <ActivitiesScreen /> },
+      { path: "activities", element: <RecordsView /> },
+      { path: "capture", element: <CaptureView /> }, // Re-add /capture pointing to CaptureView!
+      { path: "records", element: <RecordsView /> }, // Alias for records
       { path: "activity/:id", element: <ActivityDetailScreen /> },
       { path: "calendar", element: <CalendarScreen /> },
       { path: "add-event", element: <AddCalendarEventScreen /> },
