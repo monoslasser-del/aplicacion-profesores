@@ -304,6 +304,18 @@ export function DashboardScreen() {
                 <span className="text-gray-700 font-medium">Planes y Precios</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
+              {/* Fichas Descriptivas */}
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/fichas');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50 transition-colors text-left"
+              >
+                <FileSignature className="w-5 h-5 text-indigo-500" />
+                <span className="text-gray-700 font-medium">Fichas Descriptivas</span>
+                <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
+              </button>
               {/* Mi Perfil */}
               <div className="my-2 border-t border-gray-100" />
               <button 

@@ -21,6 +21,7 @@ import { PricingScreen } from "./pages/PricingScreen";
 import { ExamBuilderScreen } from "./pages/ExamBuilderScreen";
 import { ExamBuilderStep2Screen } from "./pages/ExamBuilderStep2Screen";
 import { TeacherProfileScreen } from "./pages/TeacherProfileScreen";
+import { DescriptiveCardsScreen } from "./pages/DescriptiveCardsScreen";
 
 export const router = createHashRouter([
   {
@@ -49,6 +50,7 @@ export const router = createHashRouter([
       { path: "exam-builder", element: <ExamBuilderScreen /> },
       { path: "exam-builder-step2", element: <ExamBuilderStep2Screen /> },
       { path: "perfil", element: <TeacherProfileScreen /> },
+      { path: "fichas", element: <DescriptiveCardsScreen /> },
     ],
   },
 ]);
