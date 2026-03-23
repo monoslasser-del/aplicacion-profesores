@@ -6,19 +6,12 @@ import {
   MapPin, BookOpen, Calculator, HeartHandshake, CheckCircle2, ChevronRight, Loader2, AlertCircle
 } from 'lucide-react';
 import { apiClient } from '../../lib/apiClient';
-
-// Configuración visual de Campos Formativos
-const CAMPOS = {
-  lenguajes: { name: 'Lenguajes', color: 'bg-orange-500', text: 'text-orange-600', bg: 'bg-orange-50', icon: BookOpen },
-  saberes: { name: 'Saberes', color: 'bg-blue-500', text: 'text-blue-600', bg: 'bg-blue-50', icon: Calculator },
-  etica: { name: 'Ética y Nat.', color: 'bg-purple-500', text: 'text-purple-600', bg: 'bg-purple-50', icon: MapPin },
-  comunitario: { name: 'De lo Humano', color: 'bg-green-500', text: 'text-green-600', bg: 'bg-green-50', icon: HeartHandshake }
-};
+import { useFormativeFields } from '../../hooks/useFormativeFields';
 
 interface Project {
   id: number;
   title: string;
-  field: keyof typeof CAMPOS;
+  field: string;
   reactivos_count: number;
 }
 
@@ -28,6 +21,7 @@ export function ExamBuilderScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { fields, getIcon } = useFormativeFields();
 
   // 1. Carga y Preselección Dinámica
   useEffect(() => {
@@ -151,8 +145,8 @@ export function ExamBuilderScreen() {
           <div className="space-y-3">
             <AnimatePresence>
               {projects.map((project, i) => {
-                const field = CAMPOS[project.field] || CAMPOS.saberes;
-                const Icon = field.icon;
+                const field = fields.find(f => f.slug === project.field || f.name === project.field) || fields[0] || { name: 'Campo Genérico', icon: 'BookOpen', color_hex: '#64748b', bg_color_hex: '#f1f5f9' };
+                const IconComponent = getIcon(field.icon);
                 const isSelected = selectedIds.has(project.id);
 
                 return (
@@ -179,8 +173,11 @@ export function ExamBuilderScreen() {
                         {project.title}
                       </h4>
                       <div className="flex items-center gap-2">
-                         <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${field.bg} ${field.text}`}>
-                           <Icon className="w-3 h-3" />
+                         <span 
+                           style={{ backgroundColor: field.bg_color_hex, color: field.color_hex }}
+                           className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full`}
+                         >
+                           <IconComponent className="w-3 h-3" />
                            {field.name}
                          </span>
                       </div>

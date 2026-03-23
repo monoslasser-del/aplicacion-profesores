@@ -10,6 +10,7 @@ import {
 import { useNavigate } from 'react-router';
 import { activityService } from '../../services/activityService';
 import { authService } from '../../services/authService';
+import { useFormativeFields } from '../../hooks/useFormativeFields';
 
 // Tipos de datos mock
 type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
@@ -23,12 +24,6 @@ type ActivityDetails = {
 };
 
 // Campos Formativos Constants
-const CAMPOS = [
-  { id: 'lenguajes', name: 'Lenguajes', color: 'bg-orange-500', lightColor: 'bg-orange-100', textColor: 'text-orange-600', icon: BookOpen },
-  { id: 'saberes', name: 'Saberes y Pensamiento', color: 'bg-blue-500', lightColor: 'bg-blue-100', textColor: 'text-blue-600', icon: FileText },
-  { id: 'etica', name: 'Ética y Naturaleza', color: 'bg-purple-500', lightColor: 'bg-purple-100', textColor: 'text-purple-600', icon: MapPin },
-  { id: 'comunitario', name: 'De lo Humano', color: 'bg-green-500', lightColor: 'bg-green-100', textColor: 'text-green-600', icon: HeartHandshake }
-];
 
 export function RecordsView() {
   const navigate = useNavigate();
@@ -39,8 +34,10 @@ export function RecordsView() {
   // Estado para el popover de la celda
   const [selectedCell, setSelectedCell] = useState<{ studentId: number, activityId: string, rect: DOMRect, details: ActivityDetails } | null>(null);
 
-  const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
-  const Icon = currentCampo.icon;
+  const { fields, getIcon } = useFormativeFields();
+
+  const currentCampo = fields.find(c => c.slug === activeCampo) || fields[0] || { name: 'Lenguajes', icon: 'BookOpen' };
+  const Icon = getIcon(currentCampo.icon);
 
   // State for Real Data
   const [students, setStudents] = useState<any[]>([]);
@@ -123,7 +120,10 @@ export function RecordsView() {
   return (
     <div className="flex flex-col h-full bg-gray-50 absolute inset-0 overflow-hidden z-0">
       {/* Header Concentrado */}
-      <div className={`${currentCampo.color} px-4 pt-6 pb-6 shadow-md z-10 shrink-0 relative transition-colors duration-500`}>
+      <div 
+        style={{ backgroundColor: currentCampo.color_hex || '#f97316' }}
+        className={`px-4 pt-6 pb-6 shadow-md z-10 shrink-0 relative transition-colors duration-500`}
+      >
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-white font-bold text-xl">Acompáñame</h1>
@@ -137,19 +137,24 @@ export function RecordsView() {
 
         {/* Campos Formativos Selector */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
-          {CAMPOS.map((campo) => {
-            const isActive = activeCampo === campo.id;
+          {fields.map(campo => {
+            const IconComponent = getIcon(campo.icon);
+            const isActive = activeCampo === campo.slug;
             return (
               <button
                 key={campo.id}
-                onClick={() => setActiveCampo(campo.id)}
+                onClick={() => setActiveCampo(campo.slug)}
+                style={{
+                  backgroundColor: isActive ? 'white' : 'rgba(255,255,255,0.2)',
+                  color: isActive ? '#111827' : 'white'
+                }}
                 className={`snap-center whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 ${
                   isActive 
-                    ? 'bg-white text-gray-900 shadow-sm scale-100' 
-                    : 'bg-white/20 text-white hover:bg-white/30 scale-95'
+                    ? 'shadow-sm scale-100' 
+                    : 'hover:bg-white/30 scale-95'
                 }`}
               >
-                <campo.icon className={`w-4 h-4 ${isActive ? campo.textColor : 'text-white'}`} />
+                <IconComponent className={`w-4 h-4`} style={{ color: isActive ? campo.color_hex : 'white' }} />
                 {campo.name}
               </button>
             );

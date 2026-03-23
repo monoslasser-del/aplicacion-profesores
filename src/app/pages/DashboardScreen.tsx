@@ -26,6 +26,7 @@ import {
   FileSignature
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useFormativeFields } from '../../hooks/useFormativeFields';
 import { studentService } from '../../services/studentService';
 import { authService, type User as AuthUser } from '../../services/authService';
 import { pdfGenerator } from '../../lib/pdfGenerator';
@@ -36,6 +37,9 @@ export function DashboardScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [recentStudentsDb, setRecentStudentsDb] = useState<any[]>([]);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  const { fields, loading: loadingFields } = useFormativeFields();
   const [authUser, setAuthUser] = useState<AuthUser | null>(authService.getStoredUser());
 
   // Datos del docente reales
@@ -130,11 +134,13 @@ export function DashboardScreen() {
   const gradeStats = {
     average: 8.7,
     trimester: 2,
-    subjects: [
-      { name: 'Lenguajes', average: 8.6, color: 'bg-orange-500' },
-      { name: 'Saberes', average: 8.8, color: 'bg-blue-500' },
-      { name: 'Ética', average: 8.7, color: 'bg-purple-500' },
-      { name: 'Comunitario', average: 8.9, color: 'bg-green-500' }
+    subjects: fields.length > 0 ? fields.map(f => ({
+      name: f.name.split(' ')[0], // Solo la primera palabra para el bubble
+      average: (Math.random() * (9.5 - 8.0) + 8.0).toFixed(1),
+      color: f.color_hex // Pasar el hex
+    })) : [
+      { name: 'Lenguajes', average: 8.6, color: '#f97316' },
+      { name: 'Saberes', average: 8.8, color: '#3b82f6' }
     ]
   };
 

@@ -9,13 +9,8 @@ import { studentService } from '../../services/studentService';
 import { activityService } from '../../services/activityService';
 import { authService } from '../../services/authService';
 import { hardwareServices } from '../../utils/hardwareServices';
+import { useFormativeFields } from '../../hooks/useFormativeFields';
 
-const CAMPOS = [
-  { id: 'lenguajes', name: 'Lenguajes', color: 'bg-orange-500', lightColor: 'bg-orange-100', textColor: 'text-orange-600', icon: BookOpen },
-  { id: 'saberes', name: 'Saberes y Pensamiento', color: 'bg-blue-500', lightColor: 'bg-blue-100', textColor: 'text-blue-600', icon: FileText },
-  { id: 'etica', name: 'Ética y Naturaleza', color: 'bg-purple-500', lightColor: 'bg-purple-100', textColor: 'text-purple-600', icon: MapPin },
-  { id: 'comunitario', name: 'De lo Humano', color: 'bg-green-500', lightColor: 'bg-green-100', textColor: 'text-green-600', icon: HeartHandshake }
-];
 
 
 export function CaptureView() {
@@ -25,6 +20,8 @@ export function CaptureView() {
   const [saving, setSaving] = useState(false);
   const [isNfcActive, setIsNfcActive] = useState(false);
   
+  const { fields, loading: loadingFields, getIcon } = useFormativeFields();
+
   // States to represent the current activity gracefully
   const [activityId, setActivityId] = useState<number | null>(location.state?.activityId || null);
   const [activityType, setActivityType] = useState(location.state?.activityType || 'registro');
@@ -237,7 +234,7 @@ export function CaptureView() {
     }
   };
 
-  const currentCampo = CAMPOS.find(c => c.id === activeCampo) || CAMPOS[0];
+  const currentCampo = fields.find(c => c.slug === activeCampo) || fields[0] || { name: 'Lenguajes' };
 
   const handleCreateActivity = async () => {
     if (!newActivityName.trim()) return;
@@ -308,16 +305,35 @@ export function CaptureView() {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Campo Formativo</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {CAMPOS.map(c => (
-                    <button 
-                      key={c.id} 
-                      onClick={() => setActiveCampo(c.id)}
-                      className={`flex items-center gap-2 p-3 rounded-xl border transition-all ${activeCampo === c.id ? `border-${c.color.split('-')[1]}-500 ${c.lightColor} ${c.textColor}` : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
-                      <c.icon className="w-4 h-4" />
-                      <span className="text-xs font-bold">{c.name.split(' ')[0]}</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {loadingFields ? (
+                    <div className="col-span-2 text-center text-slate-400 py-4">Cargando campos...</div>
+                  ) : (
+                    fields.map((campo) => {
+                      const IconComponent = getIcon(campo.icon);
+                      const isSelected = activeCampo === campo.slug;
+                      return (
+                        <button
+                          key={campo.id}
+                          onClick={() => setActiveCampo(campo.slug)}
+                          style={{
+                            backgroundColor: isSelected ? campo.bg_color_hex : 'white',
+                            color: isSelected ? campo.color_hex : '#64748b',
+                            borderColor: isSelected ? campo.color_hex : '#e2e8f0',
+                            borderWidth: isSelected ? '2px' : '1px'
+                          }}
+                          className={`p-3 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all ${
+                            isSelected ? 'shadow-md scale-[1.02]' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <IconComponent size={24} style={{ color: isSelected ? campo.color_hex : '#94a3b8' }} />
+                          <span className="text-xs font-bold text-center leading-tight">
+                            {campo.name}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
