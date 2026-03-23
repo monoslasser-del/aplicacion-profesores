@@ -22,6 +22,7 @@ import { ExamBuilderScreen } from "./pages/ExamBuilderScreen";
 import { ExamBuilderStep2Screen } from "./pages/ExamBuilderStep2Screen";
 import { TeacherProfileScreen } from "./pages/TeacherProfileScreen";
 import { DescriptiveCardsScreen } from "./pages/DescriptiveCardsScreen";
+import { NotificationsScreen } from "./pages/NotificationsScreen";
 
 export const router = createHashRouter([
   {
@@ -51,6 +52,7 @@ export const router = createHashRouter([
       { path: "exam-builder-step2", element: <ExamBuilderStep2Screen /> },
       { path: "perfil", element: <TeacherProfileScreen /> },
       { path: "fichas", element: <DescriptiveCardsScreen /> },
+      { path: "notificaciones", element: <NotificationsScreen /> },
     ],
   },
 ]);

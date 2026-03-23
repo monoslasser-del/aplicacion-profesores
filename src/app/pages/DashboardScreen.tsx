@@ -23,7 +23,8 @@ import {
   Bell,
   ClipboardList,
   Printer,
-  FileSignature
+  FileSignature,
+  MessageSquare,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useFormativeFields } from '../../hooks/useFormativeFields';
@@ -302,6 +303,18 @@ export function DashboardScreen() {
               >
                 <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
                 <span className="text-gray-700 font-medium">Planes y Precios</span>
+                <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
+              </button>
+              {/* Notificaciones */}
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/notificaciones');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors text-left"
+              >
+                <Bell className="w-5 h-5 text-blue-500" />
+                <span className="text-gray-700 font-medium">Notificaciones</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
               {/* Fichas Descriptivas */}
