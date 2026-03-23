@@ -9,6 +9,7 @@ export interface DescriptiveCardData {
   areas_oportunidad?: string;
   recomendaciones_generales?: string;
   recomendaciones_familia?: string;
+  evaluaciones_count?: number;
 }
 
 export const descriptiveCardService = {
@@ -17,6 +18,9 @@ export const descriptiveCardService = {
   },
   getCard: async (studentId: number) => {
     return apiClient.get<DescriptiveCardData>(`/v1/students/${studentId}/descriptive-card`);
+  },
+  saveCard: async (studentId: number, data: Partial<DescriptiveCardData>) => {
+    return apiClient.post<{success: boolean, message: string, status: string}>(`/v1/students/${studentId}/descriptive-card`, data);
   },
   downloadPdfUrl: (studentId: number) => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
