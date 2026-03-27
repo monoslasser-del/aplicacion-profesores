@@ -19,6 +19,9 @@ export const descriptiveCardService = {
   getCard: async (studentId: number) => {
     return apiClient.get<DescriptiveCardData>(`/v1/students/${studentId}/descriptive-card`);
   },
+  generateBatch: async (groupId: number) => {
+    return apiClient.post<{success: boolean, generated_count: number, message: string}>(`/v1/groups/${groupId}/descriptive-cards/batch`, {});
+  },
   saveCard: async (studentId: number, data: Partial<DescriptiveCardData>) => {
     return apiClient.post<{success: boolean, message: string, status: string}>(`/v1/students/${studentId}/descriptive-card`, data);
   },

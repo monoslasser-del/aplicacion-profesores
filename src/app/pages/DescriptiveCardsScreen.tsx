@@ -125,14 +125,14 @@ export function DescriptiveCardsScreen() {
   const [loadingCard, setLoadingCard] = useState(false);
   const [saving, setSaving]           = useState(false);
 
-  // Toast
   const [toast, setToast]             = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
+
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Load group progress
   const loadProgress = useCallback(async () => {
     setLoading(true);
     try {
@@ -146,6 +146,21 @@ export function DescriptiveCardsScreen() {
   }, [groupId]);
 
   useEffect(() => { loadProgress(); }, [loadProgress]);
+
+  const handleBatchGenerate = async () => {
+    if (!progress || progress.pending === 0) return;
+    setIsGeneratingBatch(true);
+    try {
+      showToast('Iniciando generación en lote con IA...', 'success');
+      const res = await descriptiveCardService.generateBatch(groupId);
+      showToast(res.message, 'success');
+      await loadProgress(); // Recargar la lista
+    } catch (err) {
+      showToast('Error al generar fichas en lote', 'error');
+    } finally {
+      setIsGeneratingBatch(false);
+    }
+  };
 
   // Open editor
   const openEditor = async (student: any) => {
@@ -282,21 +297,50 @@ export function DescriptiveCardsScreen() {
               </div>
             </motion.div>
 
-            {/* AI tip banner */}
+            {/* AI tip banner with Batch Button */}
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .2 }}
               style={{
                 background: `linear-gradient(135deg, ${C.primary}18, #7c3aed18)`,
                 border: `1px solid ${C.primary}30`,
-                borderRadius: 14, padding: '10px 14px',
-                display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16,
+                borderRadius: 14, padding: '12px 16px',
+                display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16,
               }}
             >
-              <Sparkles size={16} color={C.primary} style={{ marginTop: 2, flexShrink: 0 }} />
-              <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
-                El motor de IA analiza las calificaciones y genera un borrador personalizado para cada alumno. 
-                Puedes editarlo libremente antes de guardarlo.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Sparkles size={16} color={C.primary} style={{ marginTop: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+                  El motor de IA analiza las calificaciones y genera un borrador personalizado para cada alumno. 
+                  Puedes editarlo libremente antes de guardarlo.
+                </p>
+              </div>
+              {progress.pending > 0 && (
+                <button
+                  onClick={handleBatchGenerate}
+                  disabled={isGeneratingBatch}
+                  style={{
+                    backgroundColor: C.primary, color: 'white', border: 'none', borderRadius: 10,
+                    padding: '10px 14px', fontSize: 13, fontWeight: 800, cursor: isGeneratingBatch ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start',
+                    opacity: isGeneratingBatch ? 0.7 : 1, transition: 'all 0.2s'
+                  }}
+                >
+                  {isGeneratingBatch ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white' }}
+                      />
+                      En proceso...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      Generar Todas ({progress.pending})
+                    </>
+                  )}
+                </button>
+              )}
             </motion.div>
 
             {/* Student list */}
