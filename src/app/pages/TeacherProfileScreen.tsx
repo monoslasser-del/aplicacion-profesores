@@ -4,7 +4,7 @@ import {
   ArrowLeft, Pencil, Lock, Camera, Save, Eye, EyeOff,
   CheckCircle2, AlertCircle, Shield, Trash2, Loader2, Mail,
   X, ChevronDown, ChevronUp, User, Home, Users, ClipboardList,
-  Smartphone, AlertTriangle,
+  Smartphone, AlertTriangle, Crown
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { userService } from '../../services/userService';
@@ -691,6 +691,32 @@ export function TeacherProfileScreen() {
               </div>
             </div>
             <ChevronDown size={18} color={C.gray400}/>
+          </button>
+        </Card>
+
+        {/* Card 3 — Suscripción */}
+        <Card style={{ marginTop: 2 }}>
+          <SLabel icon={<Crown size={15} color="#f59e0b"/>} label="Suscripción"/>
+          <button
+            onClick={() => navigate('/planes')}
+            style={{
+              width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',
+              padding:'14px 16px',border:`2px solid ${C.gray200}`,borderRadius:14,
+              background:C.white,cursor:'pointer',transition:'all .15s',fontFamily:'inherit',
+            }}
+            onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#f59e0b'; (e.currentTarget as HTMLButtonElement).style.background = '#fffbeb'; }}
+            onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = C.gray200; (e.currentTarget as HTMLButtonElement).style.background = C.white; }}
+          >
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:36,height:36,borderRadius:10,background:'#fef3c7',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <Crown size={16} color="#d97706"/>
+              </div>
+              <div style={{textAlign:'left'}}>
+                <p style={{fontSize:14,fontWeight:700,color:C.gray900,margin:0}}>Mi Plan actual</p>
+                <p style={{fontSize:11,fontWeight:500,color:C.gray400,margin:0}}>Administra tu nivel de suscripción</p>
+              </div>
+            </div>
+            <ArrowLeft size={18} color={C.gray400} style={{ transform: 'rotate(180deg)' }}/>
           </button>
         </Card>
 
