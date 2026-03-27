@@ -10,6 +10,7 @@ interface Activity {
   id: number;
   title: string;
   type: string;
+  field?: string;
   date: string;
   score: number;
   max_score: number;
@@ -171,41 +172,55 @@ export function StudentProfileScreen() {
            </div>
         </motion.button>
 
-        {/* Últimas actividades */}
+        {/* Kardex por Campo Formativo */}
         <div>
           <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500" />
-            Últimas Actividades
+            Kardex de Actividades
           </h2>
           
-          <div className="space-y-3">
-            {recent_activities.length > 0 ? recent_activities.map((act, i) => (
-              <motion.div 
-                key={act.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1 pr-4">
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md inline-block mb-1.5">{act.type}</span>
-                    <h3 className="text-gray-900 font-bold text-sm leading-snug">{act.title}</h3>
+          <div className="space-y-6">
+            {recent_activities.length > 0 ? (
+              Object.entries(
+                recent_activities.reduce((acc, act) => {
+                  const field = act.field || 'General';
+                  if (!acc[field]) acc[field] = [];
+                  acc[field].push(act);
+                  return acc;
+                }, {} as Record<string, typeof recent_activities>)
+              ).map(([field, activities]) => {
+                const fieldAvg = activities.reduce((sum, act) => sum + ((act.score / (act.max_score || 10)) * 10), 0) / activities.length;
+                
+                return (
+                  <div key={field} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-b border-gray-100">
+                      <h3 className="font-bold text-gray-800 text-sm">{field}</h3>
+                      <span className="text-xs font-black text-blue-600 bg-blue-100 px-2 py-1 rounded-lg">Promedio: {fieldAvg.toFixed(1)}</span>
+                    </div>
+                    <div className="p-3 bg-white space-y-2">
+                      {activities.map((act) => (
+                        <div key={act.id} className="flex justify-between items-center px-1 py-1.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 rounded-lg transition-colors">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-gray-800">{act.title}</span>
+                            <span className="text-[10px] text-gray-400 font-medium">
+                              {new Date(act.date).toLocaleDateString()} &middot; {act.type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {act.feedback && <span className="text-[10px] text-gray-400 italic max-w-[100px] truncate" title={act.feedback}>{act.feedback}</span>}
+                            <div className="bg-gray-100 px-2 py-1 rounded-md min-w-[40px] text-center">
+                              <span className="font-bold text-sm text-gray-700">{act.score}</span>
+                              <span className="text-[9px] text-gray-400 ml-0.5">/{act.max_score}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 bg-gray-50 px-2.5 py-1 rounded-xl">
-                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                    <span className="font-black text-gray-900 text-sm">{act.score}</span>
-                    <span className="text-gray-400 text-[10px]">/{act.max_score}</span>
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs">{act.feedback}</p>
-                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-50 text-gray-400 text-[10px] font-medium">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(act.date).toLocaleDateString()}
-                </div>
-              </motion.div>
-            )) : (
-              <p className="text-gray-500 text-sm text-center py-4">No hay actividades recientes.</p>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 text-sm text-center py-4 bg-white rounded-2xl border border-dashed border-gray-200">No hay actividades recientes.</p>
             )}
           </div>
         </div>

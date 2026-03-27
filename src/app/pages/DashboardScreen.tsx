@@ -25,13 +25,17 @@ import {
   Printer,
   FileSignature,
   MessageSquare,
+  BookOpen,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useFormativeFields } from '../../hooks/useFormativeFields';
 import { studentService } from '../../services/studentService';
 import { authService, type User as AuthUser } from '../../services/authService';
+import { notificationService } from '../../services/notificationService';
 import { pdfGenerator } from '../../lib/pdfGenerator';
 import { hardwareServices } from '../../utils/hardwareServices';
+import { useSyncStore } from '../../store/useSyncStore';
 
 export function DashboardScreen() {
   const navigate = useNavigate();
@@ -42,6 +46,10 @@ export function DashboardScreen() {
 
   const { fields, loading: loadingFields } = useFormativeFields();
   const [authUser, setAuthUser] = useState<AuthUser | null>(authService.getStoredUser());
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  const pendingSyncs = useSyncStore(s => s.pendingRecords.length);
+  const syncData = useSyncStore(s => s.syncData);
 
   // Datos del docente reales
   const teacherName  = authUser?.name  ?? 'Docente';
@@ -54,6 +62,11 @@ export function DashboardScreen() {
       setAuthUser(u);
       setGroup(u.group_info?.name ?? (u.grade && u.group ? `${u.grade}° ${u.group}` : group));
     }).catch(() => {});
+
+    // Badge real de notificaciones del admin
+    notificationService.getUnreadCount()
+      .then(r => setUnreadCount(r.count ?? 0))
+      .catch(() => {});
 
     const loadDashboardData = async () => {
       try {
@@ -173,13 +186,29 @@ export function DashboardScreen() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {pendingSyncs > 0 && (
+              <button 
+                onClick={() => syncData()}
+                className="h-10 px-3 rounded-xl bg-rose-500/80 hover:bg-rose-500 flex items-center gap-1.5 backdrop-blur-md border border-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all animate-pulse"
+              >
+                <RefreshCw className="w-4 h-4 text-white" />
+                <span className="text-white font-black text-xs">{pendingSyncs} pend.</span>
+              </button>
+            )}
             <button className="h-10 px-3 rounded-xl bg-white/10 flex items-center gap-1.5 backdrop-blur-sm border border-white/20">
               <Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
               <span className="text-white font-bold text-sm">Pro</span>
             </button>
-            <button className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center relative backdrop-blur-sm border border-white/20">
+            <button
+              onClick={() => navigate('/notificaciones')}
+              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center relative backdrop-blur-sm border border-white/20 active:scale-90 transition-transform"
+            >
               <Bell className="w-5 h-5 text-white" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold border border-blue-600">2</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold border border-blue-600">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -327,6 +356,18 @@ export function DashboardScreen() {
               >
                 <FileSignature className="w-5 h-5 text-indigo-500" />
                 <span className="text-gray-700 font-medium">Fichas Descriptivas</span>
+                <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
+              </button>
+              {/* Proyectos NEM */}
+              <button 
+                onClick={() => {
+                  setShowMenu(false);
+                  navigate('/proyectos');
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-violet-50 transition-colors text-left"
+              >
+                <BookOpen className="w-5 h-5 text-violet-500" />
+                <span className="text-gray-700 font-medium">Biblioteca de Proyectos</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-gray-400" />
               </button>
               {/* Mi Perfil */}
