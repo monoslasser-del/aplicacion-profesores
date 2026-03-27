@@ -2,19 +2,24 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient } from '../lib/apiClient';
 
+// Maximum attempts before a stuck record is auto-discarded
+const MAX_RETRY_ATTEMPTS = 3;
+
 export interface PendingRecord {
-  id: string; // Un UUID local
-  studentId: string;
-  activityId?: string; // Para tareas o rúbricas
+  id: string;
+  studentId: number | string;
+  activityId?: string;
   type: 'attendance' | 'evaluation';
-  value?: string; // Ej: 'B', 'P', 'E'
+  value?: string;
   timestamp: number;
+  /** Number of failed sync attempts — records are dropped after MAX_RETRY_ATTEMPTS */
+  attempts?: number;
 }
 
 interface SyncState {
   pendingRecords: PendingRecord[];
   isOnline: boolean;
-  addRecord: (record: Omit<PendingRecord, 'id' | 'timestamp'>) => void;
+  addRecord: (record: Omit<PendingRecord, 'id' | 'timestamp' | 'attempts'>) => void;
   removeRecord: (id: string) => void;
   setOnlineStatus: (status: boolean) => void;
   syncData: () => Promise<void>;
@@ -32,11 +37,12 @@ export const useSyncStore = create<SyncState>()(
           ...record,
           id: crypto.randomUUID(),
           timestamp: Date.now(),
+          attempts: 0,
         };
 
         set((state) => {
-          // Si estamos tomando asistencia, evitar duplicados del mismo día para el mismo alumno (sobrescribir)
-          const filtered = state.pendingRecords.filter(r => 
+          // Deduplicate: same student + type + activity → overwrite
+          const filtered = state.pendingRecords.filter(r =>
             !(r.studentId === record.studentId && r.type === record.type && r.activityId === record.activityId)
           );
           return { pendingRecords: [...filtered, newRecord] };
@@ -54,42 +60,79 @@ export const useSyncStore = create<SyncState>()(
       },
 
       syncData: async () => {
-        const { pendingRecords, removeRecord, isOnline } = get();
+        const { pendingRecords, isOnline } = get();
         if (!isOnline || pendingRecords.length === 0) return;
 
-        // Intentar sincronizar cada registro
+        const toRemove: string[] = [];
+        const toIncrementAttempts: string[] = [];
+
         for (const record of pendingRecords) {
+          // Auto-discard records that have failed too many times
+          const attempts = record.attempts ?? 0;
+          if (attempts >= MAX_RETRY_ATTEMPTS) {
+            console.warn(
+              `[syncStore] Discarding stuck record ${record.id} after ${attempts} failed attempts.`,
+              record
+            );
+            toRemove.push(record.id);
+            continue;
+          }
+
           try {
             if (record.type === 'attendance') {
-              // Asumiendo un endpoint de asistencia
               await apiClient.post('/v1/attendance', {
                 student_id: record.studentId,
                 status: 'present',
-                date: new Date(record.timestamp).toISOString().split('T')[0]
+                date: new Date(record.timestamp).toISOString().split('T')[0],
               });
-            } else if (record.type === 'evaluation') {
-              // Asumiendo un endpoint de evaluación
-              await apiClient.post('/v1/activities/grades', {
-                activity_id: record.activityId,
+            } else if (record.type === 'evaluation' && record.activityId) {
+              // Parse value: numeric string → score, text → score_text
+              const numericVal = record.value ? parseFloat(record.value) : NaN;
+              const isNumeric = !isNaN(numericVal);
+
+              await apiClient.post(`/v1/activities/${record.activityId}/grades`, {
                 grades: [{
                   student_id: record.studentId,
-                  score: record.value === 'E' ? 10 : record.value === 'B' ? 8 : record.value === 'I' ? 6 : record.value === 'P' ? 5 : 0
-                }]
+                  score: isNumeric ? numericVal : null,
+                  score_text: !isNumeric && record.value ? record.value : null,
+                }],
               });
             }
-            // Si la petición fue exitosa, eliminamos de la cola
-            removeRecord(record.id);
-          } catch (error) {
-            console.error('Error sincronizando registro', record.id, error);
-            // Si falla, se queda en la cola de pendingRecords
+
+            // Success → mark for removal
+            toRemove.push(record.id);
+          } catch (error: any) {
+            const status = error?.status ?? error?.response?.status ?? 0;
+
+            // 4xx client errors (bad payload, not found, etc.) → discard immediately,
+            // retrying won't help since the payload is structurally wrong.
+            if (status >= 400 && status < 500) {
+              console.warn(`[syncStore] Discarding record ${record.id} — client error ${status}:`, error);
+              toRemove.push(record.id);
+            } else {
+              // 5xx / network → increment attempt counter, keep for retry
+              console.error(`[syncStore] Failed to sync record ${record.id} (attempt ${attempts + 1}/${MAX_RETRY_ATTEMPTS}):`, error);
+              toIncrementAttempts.push(record.id);
+            }
           }
         }
+
+        // Apply removals and attempt increments in a single state update
+        set((state) => ({
+          pendingRecords: state.pendingRecords
+            .filter((r) => !toRemove.includes(r.id))
+            .map((r) =>
+              toIncrementAttempts.includes(r.id)
+                ? { ...r, attempts: (r.attempts ?? 0) + 1 }
+                : r
+            ),
+        }));
       },
-      
-      clearAll: () => set({ pendingRecords: [] })
+
+      clearAll: () => set({ pendingRecords: [] }),
     }),
     {
-      name: 'nfc-sync-storage', // Clave de localStorage
+      name: 'nfc-sync-storage',
     }
   )
 );
