@@ -15,7 +15,7 @@ import { gradeStatsService } from '../../services/gradeStatsService';
 import * as XLSX from 'xlsx';
 
 // Tipos de datos mock
-type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, o Numérica
+type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | '-' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, sin calificar, o Numérica
 type ActivityDetails = {
   id: string;
   name: string;
@@ -100,25 +100,44 @@ export function RecordsView() {
     { name: 'Sin Actividades', actividades: [{ id: '-', label: 'N/A' }] }
   ];
 
-  // Random Data Generator Helper
-  const getCellStatus = (studentListNum: number, actId: string): CellStatus => {
-    const r = Math.random();
-    if (r > 0.8) return 'P'; // Pendiente
-    if (r > 0.7) return 'I'; // Incompleto
-    return 'B'; // Bien (Check verde)
+  // Real Data Generator Helper
+  const getCellStatus = (studentId: number, actId: string): CellStatus => {
+    const act = dbActivities.find(a => String(a.id) === actId);
+    if (!act) return '-';
+    const grades = act.grades || [];
+    const grade = grades.find((g: any) => String(g.student_id) === String(studentId));
+    if (!grade) return '-';
+
+    if (act.type === 'calificada') {
+      if (act.evaluation_scale === 'numeric') return grade.score ? Math.round(grade.score) : '-';
+      if (act.evaluation_scale === 'levels') {
+        if (grade.level === 'Logrado') return 'B';
+        if (grade.level === 'En Proceso') return 'I';
+        if (grade.level === 'Requiere Apoyo') return 'P';
+        return grade.level ? grade.level as CellStatus : '-';
+      }
+    }
+    if (grade.status === 'yes') return 'B';
+    if (grade.status === 'no') return 'P';
+    return '-';
   }
 
   // Helper para generar detalles de actividad para el popover
-  const getActivityDetails = (actId: string, status: CellStatus): ActivityDetails => ({
-    id: actId,
-    name: 'Lectura en voz alta',
-    date: '11 Marzo',
-    observation: status === 'B' ? 'Leyó con fluidez.' : undefined,
-    status: status,
-    type: 'registro'
-  });
+  const getActivityDetails = (studentId: number, actId: string): ActivityDetails => {
+    const act = dbActivities.find(a => String(a.id) === actId);
+    const grade = (act?.grades || []).find((g: any) => String(g.student_id) === String(studentId));
+    
+    return {
+      id: actId,
+      name: act?.title || 'Actividad desconocida',
+      date: new Date(act?.due_date || act?.created_at || new Date()).toLocaleDateString(),
+      observation: grade?.comments || '',
+      status: getCellStatus(studentId, actId),
+      type: act?.type || 'registro'
+    };
+  };
 
-  const handleCellClick = (e: React.MouseEvent, studentId: number, activityId: string, status: CellStatus) => {
+  const handleCellClick = (e: React.MouseEvent, studentId: number, activityId: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
     if (selectedCell?.studentId === studentId && selectedCell?.activityId === activityId) {
       setSelectedCell(null); // Toggle off if clicked again
@@ -127,7 +146,7 @@ export function RecordsView() {
         studentId,
         activityId,
         rect,
-        details: getActivityDetails(activityId, status)
+        details: getActivityDetails(studentId, activityId)
       });
     }
   };
@@ -152,7 +171,7 @@ export function RecordsView() {
       
       // Dynamic Activity columns baseadas en el campo formativo filtrado
       filteredActivities.forEach(act => {
-        const val = getCellStatus(student.listNumber, act.id);
+        const val = getCellStatus(student.id, act.id);
         const translated = val === 'B' ? 'Bien' : val === 'P' ? 'Pendiente' : val === 'I' ? 'Incompleto' : val;
         row[act.title] = translated;
       });
@@ -373,17 +392,17 @@ export function RecordsView() {
 
                       {/* Scrollable Data Cells */}
                       {daysColumns.flatMap(day => day.actividades).map((act, colIndex) => {
-                        // Generate deterministic pseudo-random status
-                        const status = getCellStatus(student.listNumber, act.id);
-                        const isSelected = selectedCell?.studentId === student.listNumber && selectedCell?.activityId === act.id;
+                        // Get real graded status
+                        const status = getCellStatus(student.id, act.id);
+                        const isSelected = selectedCell?.studentId === student.id && selectedCell?.activityId === act.id;
                         
                         return (
                           <td 
-                            key={`${student.listNumber}-${act.id}`} 
+                            key={`${student.id}-${act.id}`} 
                             className={`border-b border-r border-gray-100 p-1.5 text-center cursor-pointer transition-all ${isSelected ? 'bg-blue-50 ring-2 ring-blue-500 relative z-10 scale-105 shadow-md rounded-md' : 'bg-transparent hover:bg-slate-100/50'}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCellClick(e, student.listNumber, act.id, status);
+                              handleCellClick(e, student.id, act.id);
                             }}
                           >
                             <div className="flex items-center justify-center h-10 w-full">
