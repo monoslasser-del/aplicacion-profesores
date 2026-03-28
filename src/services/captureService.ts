@@ -68,7 +68,7 @@ function buildGradePayload(
     // registro | participacion → solo registramos si entregó o no
     score_text =
       result.statusValue === 'yes' ? 'Completado' :
-      result.statusValue === 'no'  ? 'Pendiente'  : null;
+        result.statusValue === 'no' ? 'Pendiente' : null;
   }
 
   return { student_id: studentId, score, score_text };
@@ -204,14 +204,6 @@ export const captureService = {
         )
       )
       .filter((g) => g.score !== null || (g.score_text !== null && g.score_text !== undefined));
-      
-    console.log('[DEBUG] Datos de Evaluación a Mandar:', {
-      actividad_id: session.activityId,
-      tipo_actividad: session.activityType,
-      escala_evaluacion: session.evaluationScale,
-      alumnos_evaluados: grades.length,
-      payload_calificaciones: grades
-    });
 
     if (grades.length > 0) {
       await activityService.submitGrades(session.activityId, grades);
@@ -242,8 +234,8 @@ export const captureService = {
     return student.status === 'yes'
       ? 'Listo'
       : student.status === 'no'
-      ? 'Pendiente'
-      : null;
+        ? 'Pendiente'
+        : null;
   },
 
   /**

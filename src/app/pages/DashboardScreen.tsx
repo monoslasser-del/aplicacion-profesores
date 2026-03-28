@@ -225,15 +225,7 @@ export function DashboardScreen() {
           <p className="text-blue-100 font-medium text-sm">Tu aula virtual está lista para hoy.</p>
         </div>
 
-        {/* Group Selector — Read only, muestra el grupo del docente */}
-        <div className="relative mt-4 z-10">
-          <div className="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-base font-bold rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-sm">
-            <span>{group} (Tu grupo)</span>
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-              <ChevronRight className="w-4 h-4 rotate-90" />
-            </div>
-          </div>
-        </div>
+
       </div>
 
       {/* Side Menu Overlay */}
