@@ -153,10 +153,11 @@ export function RecordsView() {
 
   // Helper para renderizar iconos de estado
   const renderStatusIcon = (status: CellStatus) => {
-    if (status === 'B') return <div className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center"><CheckCircle2 className="w-3.5 h-3.5" /></div>;
-    if (status === 'P') return <div className="w-5 h-5 rounded-full bg-red-400 text-white flex items-center justify-center"><X className="w-3.5 h-3.5" /></div>;
-    if (status === 'I') return <div className="w-5 h-5 rounded-full bg-yellow-400 text-white flex items-center justify-center"><Clock className="w-3.5 h-3.5" /></div>;
-    return <span className="font-bold text-sm text-gray-700">{status}</span>;
+    if (status === 'B') return <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-[0_2px_4px_rgba(16,185,129,0.15)]"><CheckCircle2 className="w-4 h-4" /></div>;
+    if (status === 'P') return <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shadow-[0_2px_4px_rgba(244,63,94,0.15)]"><X className="w-4 h-4" /></div>;
+    if (status === 'I') return <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 border border-amber-200 flex items-center justify-center shadow-[0_2px_4px_rgba(245,158,11,0.15)]"><Clock className="w-4 h-4" /></div>;
+    if (status === '-') return <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center"><span className="w-2.5 h-0.5 bg-slate-300 rounded-full"></span></div>;
+    return <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shadow-[0_2px_4px_rgba(99,102,241,0.15)]"><span className="font-extrabold text-[12px] leading-none">{status}</span></div>;
   };
 
   const exportToExcel = () => {
@@ -423,65 +424,79 @@ export function RecordsView() {
               </table>
             </div>
             
-            {/* Popover/Tooltip Portal (Simulated relative to absolute container) */}
+            {/* Botton Sheet Detalles */}
             <AnimatePresence>
               {selectedCell && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                  style={{
-                    position: 'fixed',
-                    top: Math.min(selectedCell.rect.bottom + 10, window.innerHeight - 200),
-                    // Intenta centrarlo, pero no salir de la pantalla
-                    left: Math.max(16, Math.min(selectedCell.rect.left - 100, window.innerWidth - 240)),
-                    zIndex: 50
-                  }}
-                  className="bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-gray-100 w-60 overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                       <BookOpen className="w-4 h-4 text-white" />
-                       <span className="text-white font-bold text-sm truncate">{selectedCell.details.name}</span>
+                <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={(e) => { e.stopPropagation(); setSelectedCell(null); }}
+                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px]"
+                  />
+                  <motion.div
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                    className="relative bg-white w-full rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] flex flex-col max-h-[85vh] z-[101]"
+                    style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2 shrink-0 opacity-80" />
+                    
+                    <div className="flex items-center justify-between px-6 pb-4 pt-3 border-b border-slate-100/60">
+                       <h3 className="text-[22px] font-black text-slate-800 text-left truncate flex-1 leading-tight tracking-tight pr-4">{selectedCell.details.name}</h3>
+                       <button onClick={(e) => { e.stopPropagation(); setSelectedCell(null); }} className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors flex justify-center items-center text-slate-500 active:scale-95 shrink-0 ml-auto">
+                         <X className="w-5 h-5"/>
+                       </button>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-blue-200" />
-                  </div>
-                  <div className="p-4 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-opacity-10 bg-[#FFFDF8]">
-                    <div className="flex flex-col gap-3">
-                      <div>
-                        <span className="text-gray-900 font-bold text-sm">{selectedCell.details.date}</span>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                          <span className="text-gray-600 text-xs text-left">Leer: Cuento corto</span>
-                        </div>
-                      </div>
-                      
-                      {selectedCell.details.observation && (
-                        <div>
-                          <span className="text-gray-500 font-bold text-xs uppercase">Observación:</span>
-                          <div className="flex items-start gap-1.5 mt-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
-                            <span className="text-gray-700 text-xs italic">"{selectedCell.details.observation}"</span>
-                          </div>
-                        </div>
-                      )}
 
-                      <div className="flex items-center justify-between mt-2 pt-3 border-t border-gray-200/50">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                            <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          </div>
-                          <span className="text-gray-900 font-bold text-sm">Entregado</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-300">...</span>
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        </div>
-                      </div>
+                    <div className="px-6 pt-5 pb-8 overflow-y-auto">
+                       <div className="flex items-center gap-2.5 mb-6 text-sm font-black text-indigo-500 bg-indigo-50/50 w-fit px-4 py-2 rounded-xl">
+                         <Clock className="w-4 h-4" /> 
+                         <span>{selectedCell.details.date}</span>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4 mb-6">
+                         <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 flex flex-col justify-center gap-3 relative overflow-hidden group">
+                            <div className="absolute -top-4 -right-4 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">{renderStatusIcon(selectedCell.details.status)}</div>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] relative z-10">Evaluación</p>
+                            <div className="flex items-center gap-3 relative z-10">
+                              {renderStatusIcon(selectedCell.details.status)}
+                              <p className="text-[15px] font-bold text-slate-700 capitalize leading-tight">
+                                {selectedCell.details.status === 'B' ? 'Aprobado' : selectedCell.details.status === 'P' ? 'Reprobado' : selectedCell.details.status === 'I' ? 'En Proceso' : selectedCell.details.status === '-' ? 'Pendiente' : selectedCell.details.status}
+                              </p>
+                            </div>
+                         </div>
+                         <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 flex flex-col justify-center gap-3 relative overflow-hidden group">
+                            <div className="absolute -top-4 -right-4 p-8 opacity-[0.03] text-indigo-900 group-hover:scale-110 transition-transform duration-500"><BookOpen className="w-16 h-16"/></div>
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] relative z-10">Actividad</p>
+                            <div className="flex items-center gap-3 relative z-10">
+                              <div className="w-6 h-6 shrink-0 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center">
+                                <FileText className="w-3 h-3" />
+                              </div>
+                              <p className="text-[15px] font-bold text-slate-700 capitalize leading-tight truncate">
+                                {selectedCell.details.type}
+                              </p>
+                            </div>
+                         </div>
+                       </div>
+                       
+                       {selectedCell.details.observation && (
+                         <div className="bg-gradient-to-br from-indigo-50/80 to-blue-50/40 rounded-3xl p-6 border border-indigo-100/50 relative mt-2">
+                           <div className="absolute -top-3 left-6 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.3)]">
+                             Nota del Docente
+                           </div>
+                           <p className="text-[15px] text-slate-700 font-medium italic mt-3 leading-relaxed">
+                             "{selectedCell.details.observation}"
+                           </p>
+                         </div>
+                       )}
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </div>
               )}
             </AnimatePresence>
           </div>
