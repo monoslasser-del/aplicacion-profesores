@@ -5,12 +5,13 @@ import {
   FileText, Star, ClipboardList, CheckCircle2, User,
   ListTodo, Clock, LayoutGrid, List as ListIcon, X, MapPin, 
   Book, HeartHandshake, FileSpreadsheet, Nfc, Hand, 
-  MoreHorizontal, Eye
+  MoreHorizontal, Eye, ChevronLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { activityService } from '../../services/activityService';
 import { authService } from '../../services/authService';
 import { useFormativeFields } from '../../hooks/useFormativeFields';
+import { gradeStatsService } from '../../services/gradeStatsService';
 import * as XLSX from 'xlsx';
 
 // Tipos de datos mock
@@ -46,27 +47,48 @@ export function RecordsView() {
 
   // Fetch from DB
   React.useEffect(() => {
-    import('../../services/studentService').then(({ studentService }) => {
-      studentService.getStudents().then(data => {
-        setStudents(data.map((s, index) => ({
+    // Carga paralela: alumnos + calificaciones reales + actividades
+    Promise.all([
+      import('../../services/studentService').then(m => m.studentService.getStudents()),
+      gradeStatsService.getGroupStats().catch(() => null),
+      activityService.getActivities(),
+    ]).then(([studentsData, gradeStats, activitiesData]) => {
+      // Mapa rápido: student_id → stats reales
+      const statsMap = new Map(
+        (gradeStats?.by_student ?? []).map(s => [s.student_id, s])
+      );
+
+      setStudents(studentsData.map((s: any, index: number) => {
+        const real = statsMap.get(s.id);
+        const totalAct = (gradeStats?.total_graded ?? 0) + (gradeStats?.total_pending ?? 0) > 0
+          ? activitiesData.length
+          : 12;
+        return {
+          id: s.id,
           listNumber: index + 1,
           name: s.name,
-          totalAct: 12,
-          graded: 10,
-          pending: 2,
-          avg: 9.0,
-          status: 'good'
-        })));
-      });
-    });
+          totalAct,
+          graded:  real?.graded  ?? 0,
+          pending: real?.pending ?? totalAct,
+          avg:     real?.avg     ?? null,   // null = sin calificaciones aún
+          status: real?.avg == null ? 'neutral'
+               : real.avg >= 8  ? 'good'
+               : real.avg >= 6  ? 'warning'
+               : 'danger',
+        };
+      }));
 
-    activityService.getActivities().then(data => {
-      setDbActivities(data);
+      setDbActivities(activitiesData);
     });
   }, []);
 
-  // Filter activities by active Campo
-  const filteredActivities = dbActivities.filter(a => a.subject === activeCampo);
+  // Filter activities by active Campo (handle both slug and Name)
+  const currentCampoName = currentCampo.name.toLowerCase();
+  const currentCampoSlug = (currentCampo.slug || activeCampo).toLowerCase();
+  const filteredActivities = dbActivities.filter(a => {
+    const subj = (a.subject || '').toLowerCase();
+    return subj === currentCampoSlug || subj === currentCampoName;
+  });
   
   // Group activities dynamically for the table header
   const daysColumns = filteredActivities.length > 0 ? [
@@ -152,11 +174,18 @@ export function RecordsView() {
       {/* Header Concentrado */}
       <div 
         style={{ backgroundColor: currentCampo.color_hex || '#f97316' }}
-        className={`px-4 pt-6 pb-6 shadow-md z-10 shrink-0 relative transition-colors duration-500`}
+        className={`px-4 pt-5 pb-6 shadow-md z-10 shrink-0 relative transition-colors duration-500`}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-white font-bold text-xl">Acompáñame</h1>
+        <div className="flex items-center gap-3 mb-4">
+          {/* Botón de regreso */}
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center active:scale-90 transition-transform border border-white/30 shrink-0"
+          >
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-white font-bold text-xl leading-tight">Acompáñame</h1>
             <p className="text-white/80 text-sm">Registro de Actividades</p>
           </div>
           <div className="text-right">

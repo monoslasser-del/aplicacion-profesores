@@ -267,7 +267,9 @@ export function NotificationsScreen() {
   const user = authService.getStoredUser?.() ?? null;
   const groupId: number = (user as any)?.group_info?.id ?? 1;
 
+  const [tab, setTab]           = useState<'inbox' | 'sent'>('inbox');
   const [sent, setSent]         = useState<any[]>([]);
+  const [inbox, setInbox]       = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [students, setStudents] = useState<any[]>([]);
   const [compose, setCompose]   = useState(false);
@@ -282,12 +284,14 @@ export function NotificationsScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [notifs, studs] = await Promise.all([
+      const [notifs, studs, inboxData] = await Promise.all([
         notificationService.getSent() as Promise<any[]>,
         studentService.getStudents() as Promise<any[]>,
+        notificationService.getInbox().catch(() => []) as Promise<any[]>,
       ]);
       setSent(Array.isArray(notifs) ? notifs : []);
       setStudents(Array.isArray(studs) ? studs : []);
+      setInbox(Array.isArray(inboxData) ? inboxData : []);
     } catch {
       showToast('No se pudo cargar el historial', 'error');
     } finally {

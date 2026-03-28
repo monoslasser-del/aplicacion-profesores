@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Check, Crown, Star, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { Check, Crown, Star, ArrowRight, ShieldCheck, Zap, ChevronLeft } from 'lucide-react';
 import { stripeService, planService, PlanData } from '../../services/stripeService';
+import { useNavigate } from 'react-router';
 
 export function PricingScreen() {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
@@ -48,7 +50,14 @@ export function PricingScreen() {
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
-      
+
+      {/* Botón de regreso */}
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute top-5 left-5 w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center active:scale-90 transition-transform z-10"
+      >
+        <ChevronLeft className="w-5 h-5 text-slate-600" />
+      </button>
       <div className="max-w-4xl w-full z-10">
         <div className="text-center mb-12">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
