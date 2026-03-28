@@ -677,7 +677,7 @@ export function CaptureView() {
       })));
       setActivityId(null);
       setActivityName('Ninguna actividad en la clase');
-      navigate('/records');
+      navigate('/records', { state: { campo: activeCampo } });
     } catch {
       alert('Hubo un error al guardar. Verifica la conexión con el servidor.');
     } finally {

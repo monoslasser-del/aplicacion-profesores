@@ -7,7 +7,7 @@ import {
   Book, HeartHandshake, FileSpreadsheet, Nfc, Hand, 
   MoreHorizontal, Eye, ChevronLeft
 } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { activityService } from '../../services/activityService';
 import { authService } from '../../services/authService';
 import { useFormativeFields } from '../../hooks/useFormativeFields';
@@ -29,7 +29,8 @@ type ActivityDetails = {
 
 export function RecordsView() {
   const navigate = useNavigate();
-  const [activeCampo, setActiveCampo] = useState('lenguajes');
+  const location = useLocation();
+  const [activeCampo, setActiveCampo] = useState<string>(location.state?.campo || 'lenguajes');
   const [viewMode, setViewMode] = useState<'resumen' | 'detalle'>('detalle'); // Default to detalle para mostrar la nueva vista
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -111,14 +112,14 @@ export function RecordsView() {
     if (act.type === 'calificada') {
       if (act.evaluation_scale === 'numeric') return grade.score ? Math.round(grade.score) : '-';
       if (act.evaluation_scale === 'levels') {
-        if (grade.level === 'Logrado') return 'B';
-        if (grade.level === 'En Proceso') return 'I';
-        if (grade.level === 'Requiere Apoyo') return 'P';
-        return grade.level ? grade.level as CellStatus : '-';
+        if (grade.score_text === 'Logrado') return 'B';
+        if (grade.score_text === 'En Proceso') return 'I';
+        if (grade.score_text === 'Requiere Apoyo') return 'P';
+        return grade.score_text ? grade.score_text as CellStatus : '-';
       }
     }
-    if (grade.status === 'yes') return 'B';
-    if (grade.status === 'no') return 'P';
+    if (grade.score_text === 'Completado') return 'B';
+    if (grade.score_text === 'Pendiente') return 'P';
     return '-';
   }
 
