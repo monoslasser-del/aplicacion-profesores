@@ -9,6 +9,7 @@ import { StudentWorksScreen } from "./pages/students/StudentWorksScreen";
 import { RecordsView } from "./pages/RecordsView";
 import { StudentListScreen } from "./pages/StudentListScreen";
 import { CaptureView } from "./pages/CaptureView";
+import { AttendanceCaptureScreen } from "./pages/AttendanceCaptureScreen";
 import { EvaluationCaptureScreen } from "./pages/EvaluationCaptureScreen";
 import { WelcomeScreen } from "./pages/WelcomeScreen";
 import { LoginScreen } from "./pages/LoginScreen";
@@ -45,6 +46,7 @@ export const router = createHashRouter([
       { path: "students", element: <StudentListScreen /> },
       { path: "activities", element: <RecordsView /> },
       { path: "capture", element: <CaptureView /> }, // Re-add /capture pointing to CaptureView!
+      { path: "attendance-capture", element: <AttendanceCaptureScreen /> }, // New dedicated attendance route
       { path: "records", element: <RecordsView /> }, // Alias for records
       { path: "activity/:id", element: <ActivityDetailScreen /> },
       { path: "calendar", element: <CalendarScreen /> },

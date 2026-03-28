@@ -393,7 +393,7 @@ export function DashboardScreen() {
            transition={{ delay: 0.1 }}
         >
           <button 
-            onClick={() => navigate('/manual-capture')}
+            onClick={() => navigate('/attendance-capture')}
             className="w-full relative overflow-hidden bg-gradient-to-r from-emerald-400 to-teal-500 rounded-[2rem] p-6 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all group"
           >
             {/* Glossy overlay */}
@@ -556,7 +556,7 @@ export function DashboardScreen() {
                     </>
                   ) : (
                     <button 
-                      onClick={() => navigate('/manual-capture')}
+                      onClick={() => navigate('/attendance-capture')}
                       className="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold px-3 py-2 rounded-xl active:scale-95 transition-all"
                     >
                       PASAR
