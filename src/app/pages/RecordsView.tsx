@@ -101,27 +101,30 @@ export function RecordsView() {
     { name: 'Sin Actividades', actividades: [{ id: '-', label: 'N/A' }] }
   ];
 
-  // Real Data Generator Helper
-  const getCellStatus = (studentId: number, actId: string): CellStatus => {
+  const getCellStatus = (studentId: number, actId: string): any => {
     const act = dbActivities.find(a => String(a.id) === actId);
     if (!act) return '-';
+    
     const grades = act.grades || [];
     const grade = grades.find((g: any) => String(g.student_id) === String(studentId));
     if (!grade) return '-';
 
-    if (act.type === 'calificada') {
-      if (act.evaluation_scale === 'numeric') return grade.score ? Math.round(grade.score) : '-';
-      if (act.evaluation_scale === 'levels') {
-        if (grade.score_text === 'Logrado') return 'B';
-        if (grade.score_text === 'En Proceso') return 'I';
-        if (grade.score_text === 'Requiere Apoyo') return 'P';
-        return grade.score_text ? grade.score_text as CellStatus : '-';
-      }
+    // 1. Siempre preferir el valor numérico puro si existe (Protección contra el 0 falsy de JS)
+    if (grade.score !== null && grade.score !== undefined) {
+      return Math.round(Number(grade.score));
     }
-    if (grade.score_text === 'Completado') return 'B';
-    if (grade.score_text === 'Pendiente') return 'P';
+
+    // 2. Mapeos de texto a iconos visuales universales (Registro, Niveles, Asistencia)
+    if (grade.score_text) {
+      const text = grade.score_text.toLowerCase();
+      if (['logrado', 'completado', 'yes', 'b'].includes(text)) return 'B';
+      if (['en proceso', 'i'].includes(text)) return 'I';
+      if (['requiere apoyo', 'pendiente', 'no', 'p'].includes(text)) return 'P';
+      return grade.score_text;
+    }
+
     return '-';
-  }
+  };
 
   // Helper para generar detalles de actividad para el popover
   const getActivityDetails = (studentId: number, actId: string): ActivityDetails => {

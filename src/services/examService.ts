@@ -28,6 +28,10 @@ export interface GeneratedExamPayload {
 }
 
 export const examService = {
+  getCompletedProjects: () => apiClient.get<any[]>('/v1/exams/projects/completed'),
+  
+  buildExam: (data: any) => apiClient.post<any>('/v1/exams/build', data),
+
   generateAiQuestions: async (promptConfig: ExamGenerationRequest): Promise<GeneratedExamPayload> => {
     // Mapeamos los keys de español (frontend) a inglés estructurado (backend expect)
     const payload = {
