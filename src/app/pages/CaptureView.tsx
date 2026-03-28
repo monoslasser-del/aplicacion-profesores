@@ -496,6 +496,9 @@ export function CaptureView() {
     if (!activityId) {
       activityService.getActiveActivity()
         .then((act) => {
+          if (!act || !act.id) {
+            throw new Error('No active activity');
+          }
           setActivityId(act.id!);
           setActivityName(act.title);
           setActivityType(act.type || 'registro');
