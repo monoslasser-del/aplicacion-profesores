@@ -23,6 +23,9 @@ import {
   Bell,
   ClipboardList,
   Printer,
+  Nfc,
+  QrCode,
+  List,
   FileSignature,
   MessageSquare,
   BookOpen,
@@ -399,9 +402,11 @@ export function DashboardScreen() {
             
             <div className="flex items-center justify-between relative z-10">
               <div className="text-left">
-                <h3 className="text-white font-black text-xl mb-1">Pase de Lista NFC</h3>
-                <p className="text-emerald-50 font-medium text-sm flex items-center gap-1.5">
-                  <Smartphone className="w-4 h-4" /> Acerca la credencial
+                <h3 className="text-white font-black text-xl mb-1">Pase de Lista Rápido</h3>
+                <p className="text-emerald-50 font-medium text-[13px] flex items-center gap-1.5 opacity-90">
+                  <span className="flex gap-1 items-center bg-black/10 px-2 py-0.5 rounded-md"><Nfc className="w-3 h-3"/> NFC</span>
+                  <span className="flex gap-1 items-center bg-black/10 px-2 py-0.5 rounded-md"><QrCode className="w-3 h-3"/> QR</span>
+                  <span className="flex gap-1 items-center bg-black/10 px-2 py-0.5 rounded-md"><List className="w-3 h-3"/> Tap</span>
                 </p>
               </div>
               <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-inner">
