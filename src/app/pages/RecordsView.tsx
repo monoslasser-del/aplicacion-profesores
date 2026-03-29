@@ -15,7 +15,7 @@ import { gradeStatsService } from '../../services/gradeStatsService';
 import * as XLSX from 'xlsx';
 
 // Tipos de datos mock
-type CellStatus = 'A' | 'P' | 'B' | 'I' | 'E' | '-' | number; // Asistencia, Pendiente, Bien, Incompleto, Excelencia, sin calificar, o Numérica
+type CellStatus = 'A' | 'F' | 'P' | 'B' | 'I' | 'E' | '-' | number; // Asistencia, Falta, Pendiente, Bien, Incompleto, Excelencia, sin calificar, o Numérica
 type ActivityDetails = {
   id: string;
   name: string;
@@ -34,13 +34,29 @@ export function RecordsView() {
   const [viewMode, setViewMode] = useState<'resumen' | 'detalle'>('detalle'); // Default to detalle para mostrar la nueva vista
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Week navigation for Asistencia
+  const [weekOffset, setWeekOffset] = useState(0);
+  const getWeekDates = (offset: number) => {
+    const today = new Date();
+    const dayOfWeek = today.getDay() || 7;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - dayOfWeek + 1 + (offset * 7));
+    return [0,1,2,3,4].map(i => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return d;
+    });
+  };
+  const currentWeekDates = getWeekDates(weekOffset);
+
   // Estado para el popover de la celda
   const [selectedCell, setSelectedCell] = useState<{ studentId: number, activityId: string, rect: DOMRect, details: ActivityDetails } | null>(null);
 
   const { fields, getIcon } = useFormativeFields();
+  const allFields = [{ id: 'att', name: 'Asistencia', slug: 'asistencia', icon: 'ClipboardList', color_hex: '#10b981' }, ...fields];
 
-  const currentCampo = fields.find(c => c.slug === activeCampo) || fields[0] || { name: 'Lenguajes', icon: 'BookOpen' };
-  const Icon = getIcon(currentCampo.icon);
+  const currentCampo = allFields.find(c => c.slug === activeCampo) || allFields[0] || { name: 'Lenguajes', icon: 'BookOpen' };
+  const Icon = activeCampo === 'asistencia' ? ClipboardList : getIcon(currentCampo.icon);
 
   // State for Real Data
   const [students, setStudents] = useState<any[]>([]);
@@ -87,21 +103,42 @@ export function RecordsView() {
   const currentCampoName = currentCampo.name.toLowerCase();
   const currentCampoSlug = (currentCampo.slug || activeCampo).toLowerCase();
   const filteredActivities = dbActivities.filter(a => {
+    const isAttendance = a.title.startsWith('Pase de Lista');
+    if (activeCampo === 'asistencia') return isAttendance;
+    if (isAttendance) return false; // don't show attendance in normal fields
     const subj = (a.subject || '').toLowerCase();
     return subj === currentCampoSlug || subj === currentCampoName;
   });
   
   // Group activities dynamically for the table header
-  const daysColumns = filteredActivities.length > 0 ? [
-    { 
-      name: 'Actividades NEM', 
-      actividades: filteredActivities.map(a => ({ id: String(a.id), label: a.title.substring(0, 10) })) 
-    }
-  ] : [
-    { name: 'Sin Actividades', actividades: [{ id: '-', label: 'N/A' }] }
-  ];
+  let daysColumns: { name: string, actividades: { id: string, label: string }[] }[] = [];
+  
+  if (activeCampo === 'asistencia') {
+    const actList = currentWeekDates.map((d, i) => {
+      const formattedDay = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+      const realAct = dbActivities.find(a => a.title.startsWith('Pase de Lista') && a.title.includes(formattedDay));
+      return {
+        id: realAct ? String(realAct.id) : `fake-${i}`,
+        label: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'][i] + ' ' + d.getDate(),
+      };
+    });
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const title = `Semana del ${currentWeekDates[0].getDate()} al ${currentWeekDates[4].getDate()} ${months[currentWeekDates[4].getMonth()]}`;
+    daysColumns = [{ name: title, actividades: actList }];
+  } else {
+    daysColumns = filteredActivities.length > 0 ? [
+      { 
+        name: 'Actividades NEM', 
+        actividades: filteredActivities.map(a => ({ id: String(a.id), label: a.title.substring(0, 10) })) 
+      }
+    ] : [
+      { name: 'Sin Actividades', actividades: [{ id: '-', label: 'N/A' }] }
+    ];
+  }
 
   const getCellStatus = (studentId: number, actId: string): any => {
+    if (actId.startsWith('fake-')) return '-';
+    
     const act = dbActivities.find(a => String(a.id) === actId);
     if (!act) return '-';
     
@@ -117,9 +154,12 @@ export function RecordsView() {
     // 2. Mapeos de texto a iconos visuales universales (Registro, Niveles, Asistencia)
     if (grade.score_text) {
       const text = grade.score_text.toLowerCase();
-      if (['logrado', 'completado', 'yes', 'b'].includes(text)) return 'B';
+      if (text === 'yes') return activeCampo === 'asistencia' ? 'A' : 'B';
+      if (text === 'no')  return activeCampo === 'asistencia' ? 'F' : 'P';
+      
+      if (['logrado', 'completado', 'b'].includes(text)) return 'B';
       if (['en proceso', 'i'].includes(text)) return 'I';
-      if (['requiere apoyo', 'pendiente', 'no', 'p'].includes(text)) return 'P';
+      if (['requiere apoyo', 'pendiente', 'p'].includes(text)) return 'P';
       return grade.score_text;
     }
 
@@ -128,6 +168,9 @@ export function RecordsView() {
 
   // Helper para generar detalles de actividad para el popover
   const getActivityDetails = (studentId: number, actId: string): ActivityDetails => {
+    if (actId.startsWith('fake-')) {
+      return { id: actId, name: 'Sin registro', date: '', status: '-', type: 'registro' };
+    }
     const act = dbActivities.find(a => String(a.id) === actId);
     const grade = (act?.grades || []).find((g: any) => String(g.student_id) === String(studentId));
     
@@ -156,9 +199,11 @@ export function RecordsView() {
   };
 
   // Helper para renderizar iconos de estado
-  const renderStatusIcon = (status: CellStatus) => {
+  const renderStatusIcon = (status: CellStatus | 'A' | 'F') => {
     if (status === 'B') return <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-[0_2px_4px_rgba(16,185,129,0.15)]"><CheckCircle2 className="w-4 h-4" /></div>;
+    if (status === 'A') return <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-[0_2px_4px_rgba(16,185,129,0.15)]" title="Asistencia"><CheckCircle2 className="w-4 h-4" /></div>;
     if (status === 'P') return <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shadow-[0_2px_4px_rgba(244,63,94,0.15)]"><X className="w-4 h-4" /></div>;
+    if (status === 'F') return <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shadow-[0_2px_4px_rgba(244,63,94,0.15)]" title="Falta"><X className="w-4 h-4" /></div>;
     if (status === 'I') return <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 border border-amber-200 flex items-center justify-center shadow-[0_2px_4px_rgba(245,158,11,0.15)]"><Clock className="w-4 h-4" /></div>;
     if (status === '-') return <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center"><span className="w-2.5 h-0.5 bg-slate-300 rounded-full"></span></div>;
     return <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shadow-[0_2px_4px_rgba(99,102,241,0.15)]"><span className="font-extrabold text-[12px] leading-none">{status}</span></div>;
@@ -220,8 +265,8 @@ export function RecordsView() {
 
         {/* Campos Formativos Selector */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
-          {fields.map(campo => {
-            const IconComponent = getIcon(campo.icon);
+          {allFields.map(campo => {
+            const IconComponent = campo.slug === 'asistencia' ? ClipboardList : getIcon(campo.icon);
             const isActive = activeCampo === campo.slug;
             return (
               <button
@@ -266,7 +311,7 @@ export function RecordsView() {
       </div>
 
       {/* View Toggle */}
-      <div className="px-4 py-3 shrink-0 flex justify-center z-0">
+      <div className="px-4 py-3 shrink-0 flex justify-center z-0 relative bg-gray-50">
         <div className="bg-gray-200/80 p-1 rounded-xl flex w-full max-w-sm">
           <button 
             onClick={() => setViewMode('resumen')}
@@ -288,6 +333,17 @@ export function RecordsView() {
           </button>
         </div>
       </div>
+      
+      {/* Week Navigation (Only for Asistencia & Detalle) */}
+      {activeCampo === 'asistencia' && viewMode === 'detalle' && (
+        <div className="bg-white border-b border-t border-gray-100 py-2 px-4 shrink-0 flex items-center justify-between shadow-sm z-0">
+          <button onClick={() => setWeekOffset(o => o - 1)} className="p-1.5 rounded-lg bg-gray-100 text-gray-600 active:bg-gray-200"><ChevronLeft className="w-5 h-5" /></button>
+          <span className="text-sm font-bold text-gray-700 uppercase tracking-widest text-center">
+            Del <span className="text-blue-600">{currentWeekDates[0].getDate()}</span> al <span className="text-blue-600">{currentWeekDates[4].getDate()} de {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][currentWeekDates[4].getMonth()]}</span>
+          </span>
+          <button onClick={() => setWeekOffset(o => o + 1)} className="p-1.5 rounded-lg bg-gray-100 text-gray-600 active:bg-gray-200"><ChevronRight className="w-5 h-5" /></button>
+        </div>
+      )}
 
       {/* Content Area */}
       <div className={`flex-1 flex flex-col overflow-y-auto ${viewMode === 'detalle' ? 'px-0 pb-0 pt-2' : 'px-4 pb-4'} relative`} onClick={() => selectedCell && setSelectedCell(null)}>
@@ -468,9 +524,9 @@ export function RecordsView() {
                             <div className="absolute -top-4 -right-4 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">{renderStatusIcon(selectedCell.details.status)}</div>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] relative z-10">Evaluación</p>
                             <div className="flex items-center gap-3 relative z-10">
-                              {renderStatusIcon(selectedCell.details.status)}
+                              {renderStatusIcon(selectedCell.details.status as any)}
                               <p className="text-[15px] font-bold text-slate-700 capitalize leading-tight">
-                                {selectedCell.details.status === 'B' ? 'Aprobado' : selectedCell.details.status === 'P' ? 'Reprobado' : selectedCell.details.status === 'I' ? 'En Proceso' : selectedCell.details.status === '-' ? 'Pendiente' : selectedCell.details.status}
+                                {selectedCell.details.status === 'B' ? 'Aprobado' : selectedCell.details.status === 'A' ? 'Presente' : selectedCell.details.status === 'F' ? 'Ausente' : selectedCell.details.status === 'P' ? 'Reprobado' : selectedCell.details.status === 'I' ? 'En Proceso' : selectedCell.details.status === '-' ? 'Pendiente' : selectedCell.details.status}
                               </p>
                             </div>
                          </div>

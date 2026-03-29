@@ -93,22 +93,11 @@ export function AttendanceCaptureScreen() {
   useEffect(() => {
     const init = async () => {
       try {
-        const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
-        // Crea la sesión de pase de lista en base de datos al instante
-        const act = await activityService.createActivity({
-          title: `Pase de Lista - ${today}`,
-          subject: 'lenguajes', // Default formativo
-          type: 'participacion',
-          // @ts-ignore - Valid in server payload builders
-          evaluation_scale: null
-        });
-        setActivityId(act.id!);
-
         const st = await studentService.getStudents();
         setStudents(st.map(s => ({ ...s, status: null })));
       } catch (err) {
         console.error(err);
-        alert("Error iniciando pase de lista. Revisa tu red.");
+        alert("Error cargando la lista de alumnos.");
       } finally {
         setLoading(false);
       }
@@ -146,10 +135,17 @@ export function AttendanceCaptureScreen() {
   };
 
   const handleSave = async () => {
-    if (!activityId) return;
     setSaving(true);
     try {
-      const session = { activityId, activityType: 'participacion' as any, evaluationScale: 'numeric' as any }; // numeric dummy para payload builder
+      const today = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+      // Create activity on save
+      const act = await activityService.createActivity({
+        title: `Pase de Lista - ${today}`,
+        subject: 'lenguajes', // Default formativo
+        type: 'participacion',
+      });
+      
+      const session = { activityId: act.id!, activityType: 'participacion' as any, evaluationScale: 'numeric' as any }; 
       await captureService.submitSessionAndClose(session, students.map(s => ({
         id: s.id as number, grade: '', level: '', status: s.status,
       })));
