@@ -350,7 +350,7 @@ export function NotificationsScreen() {
               Notificaciones
             </h1>
             <p style={{ fontSize: 12, color: C.slate500, margin: 0, fontWeight: 500 }}>
-              Avisos enviados a padres de familia
+              {tab === 'inbox' ? 'Avisos oficiales de Dirección' : 'Avisos enviados a padres'}
             </p>
           </div>
           <motion.button
@@ -369,45 +369,29 @@ export function NotificationsScreen() {
           </motion.button>
         </div>
 
-        {/* Stats pills */}
-        {!loading && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-            <div style={{
-              flex: 1, background: `${C.primary}10`, borderRadius: 12,
-              padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
+        {/* Tab selector */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button
+            onClick={() => setTab('inbox')}
+            style={{
+              flex: 1, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${tab === 'inbox' ? C.primary : C.slate200}`,
+              background: tab === 'inbox' ? `${C.primary}12` : 'white', cursor: 'pointer',
+              color: tab === 'inbox' ? C.primary : C.slate500, fontWeight: 800, fontSize: 13,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s'
             }}>
-              <CheckCheck size={14} color={C.primary} />
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 900, color: C.primary, margin: 0, lineHeight: 1 }}>{sent.length}</p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: C.primary, margin: 0, letterSpacing: '0.03em' }}>ENVIADOS</p>
-              </div>
-            </div>
-            <div style={{
-              flex: 1, background: `${C.emerald}10`, borderRadius: 12,
-              padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
+            <Bell size={16} /> Recibidos ({inbox.length})
+          </button>
+          <button
+            onClick={() => setTab('sent')}
+            style={{
+              flex: 1, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${tab === 'sent' ? C.primary : C.slate200}`,
+              background: tab === 'sent' ? `${C.primary}12` : 'white', cursor: 'pointer',
+              color: tab === 'sent' ? C.primary : C.slate500, fontWeight: 800, fontSize: 13,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .2s'
             }}>
-              <Users size={14} color={C.emerald} />
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 900, color: C.emerald, margin: 0, lineHeight: 1 }}>
-                  {sent.filter(n => n.group_id).length}
-                </p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: C.emerald, margin: 0, letterSpacing: '0.03em' }}>GRUPO</p>
-              </div>
-            </div>
-            <div style={{
-              flex: 1, background: `${C.amber}10`, borderRadius: 12,
-              padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <User size={14} color={C.amber} />
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 900, color: C.amber, margin: 0, lineHeight: 1 }}>
-                  {sent.filter(n => n.student_id).length}
-                </p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: C.amber, margin: 0, letterSpacing: '0.03em' }}>INDIVIDUALES</p>
-              </div>
-            </div>
-          </div>
-        )}
+            <Send size={16} /> Enviados ({sent.length})
+          </button>
+        </div>
       </div>
 
       {/* ── BODY ───────────────────────────────────────────── */}
@@ -421,13 +405,13 @@ export function NotificationsScreen() {
             />
             <p style={{ color: C.slate500, fontWeight: 600, marginTop: 14, fontSize: 14 }}>Cargando historial...</p>
           </div>
-        ) : sent.length === 0 ? (
+        ) : tab === 'sent' && sent.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 60, textAlign: 'center' }}
           >
             <div style={{ width: 72, height: 72, borderRadius: 22, background: `${C.primary}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Bell size={32} color={C.primary} />
+              <Send size={32} color={C.primary} />
             </div>
             <p style={{ fontSize: 16, fontWeight: 800, color: C.slate700, margin: 0 }}>Sin avisos enviados</p>
             <p style={{ fontSize: 13, color: C.slate400, marginTop: 6, maxWidth: 220 }}>
@@ -446,8 +430,24 @@ export function NotificationsScreen() {
               <Plus size={16} /> Redactar primer aviso
             </motion.button>
           </motion.div>
+        ) : tab === 'inbox' && inbox.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 60, textAlign: 'center' }}
+          >
+            <div style={{ width: 72, height: 72, borderRadius: 22, background: `${C.emerald}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Bell size={32} color={C.emerald} />
+            </div>
+            <p style={{ fontSize: 16, fontWeight: 800, color: C.slate700, margin: 0 }}>Tu bandeja está vacía</p>
+            <p style={{ fontSize: 13, color: C.slate400, marginTop: 6, maxWidth: 220 }}>
+              No hay nuevos avisos oficiales de Dirección Escolar por el momento.
+            </p>
+          </motion.div>
         ) : (
-          Object.entries(byDay).map(([day, items]) => (
+          Object.entries(tab === 'sent' ? byDay : inbox.reduce((acc, curr) => {
+            const d = new Date(curr.created_at).toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long' });
+            if (!acc[d]) acc[d] = []; acc[d].push(curr); return acc;
+          }, {} as Record<string, any[]>)).map(([day, items]: [string, any]) => (
             <div key={day} style={{ marginBottom: 20 }}>
               {/* Day separator */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -457,75 +457,63 @@ export function NotificationsScreen() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.map((n, idx) => {
-                  const isGroup = !!n.group_id;
-                  const label = isGroup ? 'Todo el grupo' : (n.student?.name ?? `Alumno #${n.student_id}`);
-                  const color = isGroup ? C.primary : C.amber;
-                  return (
-                    <motion.div
-                      key={n.id ?? idx}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.04 }}
-                      style={{
-                        background: 'white', borderRadius: 18,
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {/* Color top bar */}
-                      <div style={{ height: 3, background: `linear-gradient(90deg, ${color}, ${color}80)` }} />
-                      <div style={{ padding: '14px 16px' }}>
-                        {/* Header row */}
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
-                          <div style={{
-                            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
-                            background: `${color}18`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            {isGroup ? <Users size={18} color={color} /> : <User size={18} color={color} />}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                              <span style={{
-                                fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase',
-                                letterSpacing: '0.05em', background: `${color}15`,
-                                padding: '2px 8px', borderRadius: 20,
-                              }}>
-                                {isGroup ? '👨‍👩‍👧‍👦 Grupo completo' : '👤 Individual'}
-                              </span>
-                              <span style={{ fontSize: 11, color: C.slate400, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <Clock size={10} />
-                                {timeAgo(n.created_at)}
-                              </span>
+                {items.map((n: any, idx: number) => {
+                  if (tab === 'inbox') {
+                    const tcolor = n.type === 'alert' ? C.rose : n.type === 'news' ? C.amber : C.primary;
+                    return (
+                      <motion.div key={n.id ?? idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }} style={{ background: 'white', borderRadius: 18, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                        <div style={{ height: 3, background: `linear-gradient(90deg, ${tcolor}, ${tcolor}80)` }} />
+                        <div style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                            <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, background: `${tcolor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Megaphone size={18} color={tcolor} />
                             </div>
-                            <p style={{ fontSize: 14, fontWeight: 800, color: C.slate900, margin: '4px 0 0', lineHeight: 1.2 }}>
-                              {n.title}
-                            </p>
-                            <p style={{ fontSize: 11, color: C.slate500, margin: '2px 0 0', fontWeight: 600 }}>
-                              Para: {label}
-                            </p>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: tcolor, textTransform: 'uppercase', letterSpacing: '0.05em', background: `${tcolor}15`, padding: '2px 8px', borderRadius: 20 }}>De: Dirección</span>
+                                <span style={{ fontSize: 11, color: C.slate400, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} /> {timeAgo(n.created_at)}</span>
+                              </div>
+                              <p style={{ fontSize: 14, fontWeight: 900, color: C.slate900, margin: '4px 0 0', lineHeight: 1.2 }}>{n.title}</p>
+                            </div>
+                          </div>
+                          <div style={{ background: C.slate50, borderRadius: 12, padding: '10px 12px', borderLeft: `3px solid ${tcolor}` }}>
+                            <p style={{ fontSize: 13, color: C.slate700, margin: 0, lineHeight: 1.55 }}>{n.message}</p>
                           </div>
                         </div>
-
-                        {/* Message */}
-                        <div style={{
-                          background: C.slate50, borderRadius: 12,
-                          padding: '10px 12px', borderLeft: `3px solid ${color}`,
-                        }}>
-                          <p style={{ fontSize: 13, color: C.slate700, margin: 0, lineHeight: 1.55 }}>
-                            {n.message}
-                          </p>
+                      </motion.div>
+                    );
+                  } else {
+                    const isGroup = !!n.group_id;
+                    const label = isGroup ? 'Todo el grupo' : (n.student?.name ?? `Alumno #${n.student_id}`);
+                    const color = isGroup ? C.primary : C.amber;
+                    return (
+                      <motion.div key={n.id ?? idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }} style={{ background: 'white', borderRadius: 18, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                        <div style={{ height: 3, background: `linear-gradient(90deg, ${color}, ${color}80)` }} />
+                        <div style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                            <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isGroup ? <Users size={18} color={color} /> : <User size={18} color={color} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.05em', background: `${color}15`, padding: '2px 8px', borderRadius: 20 }}>{isGroup ? '👨‍👩‍👧‍👦 Grupo' : '👤 Individual'}</span>
+                                <span style={{ fontSize: 11, color: C.slate400, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} /> {timeAgo(n.created_at)}</span>
+                              </div>
+                              <p style={{ fontSize: 14, fontWeight: 800, color: C.slate900, margin: '4px 0 0', lineHeight: 1.2 }}>{n.title}</p>
+                              <p style={{ fontSize: 11, color: C.slate500, margin: '2px 0 0', fontWeight: 600 }}>Para: {label}</p>
+                            </div>
+                          </div>
+                          <div style={{ background: C.slate50, borderRadius: 12, padding: '10px 12px', borderLeft: `3px solid ${color}` }}>
+                            <p style={{ fontSize: 13, color: C.slate700, margin: 0, lineHeight: 1.55 }}>{n.message}</p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10 }}>
+                            <CheckCheck size={13} color={C.emerald} />
+                            <span style={{ fontSize: 11, color: C.emerald, fontWeight: 700 }}>Enviado</span>
+                          </div>
                         </div>
-
-                        {/* Footer */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10 }}>
-                          <CheckCheck size={13} color={C.emerald} />
-                          <span style={{ fontSize: 11, color: C.emerald, fontWeight: 700 }}>Enviado</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
+                      </motion.div>
+                    );
+                  }
                 })}
               </div>
             </div>
