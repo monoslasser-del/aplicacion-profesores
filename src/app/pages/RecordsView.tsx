@@ -254,8 +254,7 @@ export function RecordsView() {
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
           <div className="flex-1">
-            <h1 className="text-white font-bold text-xl leading-tight">Acompáñame</h1>
-            <p className="text-white/80 text-sm">Registro de Actividades</p>
+            <h1 className="text-white font-bold text-xl leading-tight">Registro de Actividades</h1>
           </div>
           <div className="text-right">
             <p className="text-white font-bold text-lg">3° "A"</p>
